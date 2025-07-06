@@ -4,6 +4,22 @@
  */
 package com.mycompany.pelacak.langganan.digital.ui;
 
+import com.mycompany.pelacak.langganan.digital.theme.RegisterTheme;
+import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
+import com.mycompany.pelacak.langganan.digital.db.SubscriptionDAO;
+import com.mycompany.pelacak.langganan.digital.model.Subscription;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.swing.JOptionPane;
+import javax.swing.JFileChooser;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+
 /**
  *
  * @author rifial
@@ -11,13 +27,34 @@ package com.mycompany.pelacak.langganan.digital.ui;
 @SuppressWarnings("serial")
 public class addSubscription extends javax.swing.JDialog {
 
-    public addSubscription() {
+    private UIFORM parentUIForm;
 
-        initComponents();
+    private Map<String, String> cycleDisplayToInternalMap;
+    private byte[] selectedLogoBytes;
+    private Subscription currentSubscription;
+
+    public addSubscription(java.awt.Frame parent, boolean modal) {
+        super(parent, modal);
+
+        if (parent instanceof UIFORM) {
+            this.parentUIForm = (UIFORM) parent;
+        }
+
+        initComponents(); 
         applyCustomThemeColors();
+
+        pembayaranselanjutnya.setDate(new java.util.Date());
+
+        sikluscombobox.addActionListener((ActionEvent e) -> {
+            updateDueDate();
+        });
+
+        updateTexts();
+
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        this.setTitle("REGISTRASI");
         this.setLocationRelativeTo(null);
+        pembayaranselanjutnya.setFont(new Font("Malgun Gothic", Font.PLAIN, 16));
+
     }
 
     /**
@@ -30,18 +67,18 @@ public class addSubscription extends javax.swing.JDialog {
     private void initComponents() {
 
         Title = new javax.swing.JLabel();
-        Username = new javax.swing.JLabel();
-        InputUsername = new javax.swing.JTextField();
+        namalayanan = new javax.swing.JLabel();
+        inputnamalayanan = new javax.swing.JTextField();
         buttonadddata = new javax.swing.JButton();
         SubTitle = new javax.swing.JLabel();
-        imagepanel = new javax.swing.JPanel();
         buttonaddimage = new javax.swing.JButton();
-        InputUsername1 = new javax.swing.JTextField();
-        Username1 = new javax.swing.JLabel();
-        InputUsername2 = new javax.swing.JTextField();
-        Username2 = new javax.swing.JLabel();
-        Username3 = new javax.swing.JLabel();
-        jDateChooser1 = new com.toedter.calendar.JDateChooser();
+        inputbiayalayanan = new javax.swing.JTextField();
+        biayalayanan = new javax.swing.JLabel();
+        sikluslayanan = new javax.swing.JLabel();
+        pembayaranberikutnyalabel = new javax.swing.JLabel();
+        pembayaranselanjutnya = new com.toedter.calendar.JDateChooser();
+        sikluscombobox = new javax.swing.JComboBox<>();
+        inputnamalayanan1 = new javax.swing.JTextField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setBackground(new java.awt.Color(0, 0, 0));
@@ -50,13 +87,13 @@ public class addSubscription extends javax.swing.JDialog {
         Title.setFont(new java.awt.Font("Malgun Gothic", 0, 24)); // NOI18N
         Title.setText("TAMBAH DATA");
 
-        Username.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
-        Username.setText("NAMA LAYANAN");
+        namalayanan.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
+        namalayanan.setText("NAMA LAYANAN");
 
-        InputUsername.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        InputUsername.addActionListener(new java.awt.event.ActionListener() {
+        inputnamalayanan.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        inputnamalayanan.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                InputUsernameActionPerformed(evt);
+                inputnamalayananActionPerformed(evt);
             }
         });
 
@@ -72,22 +109,9 @@ public class addSubscription extends javax.swing.JDialog {
 
         SubTitle.setFont(new java.awt.Font("Malgun Gothic", 0, 14)); // NOI18N
         SubTitle.setForeground(new java.awt.Color(255, 255, 255));
-        SubTitle.setText("SILAHKAN ISI FORM BERIKUT UNTUK MENAMBAHKAN DATA LANGGANAN BARU");
+        SubTitle.setText("ISI FORM BERIKUT UNTUK MENAMBAHKAN DATA LANGGANAN BARU");
 
-        imagepanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
-
-        javax.swing.GroupLayout imagepanelLayout = new javax.swing.GroupLayout(imagepanel);
-        imagepanel.setLayout(imagepanelLayout);
-        imagepanelLayout.setHorizontalGroup(
-            imagepanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-        );
-        imagepanelLayout.setVerticalGroup(
-            imagepanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 231, Short.MAX_VALUE)
-        );
-
-        buttonaddimage.setBackground(new java.awt.Color(0, 51, 204));
+        buttonaddimage.setBackground(new java.awt.Color(51, 51, 51));
         buttonaddimage.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
         buttonaddimage.setForeground(new java.awt.Color(255, 255, 255));
         buttonaddimage.setText("TAMBAH LOGO");
@@ -97,143 +121,309 @@ public class addSubscription extends javax.swing.JDialog {
             }
         });
 
-        InputUsername1.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        InputUsername1.addActionListener(new java.awt.event.ActionListener() {
+        inputbiayalayanan.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        inputbiayalayanan.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                InputUsername1ActionPerformed(evt);
+                inputbiayalayananActionPerformed(evt);
             }
         });
 
-        Username1.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
-        Username1.setText("BIAYA LAYANAN");
+        biayalayanan.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
+        biayalayanan.setText("BIAYA LAYANAN");
 
-        InputUsername2.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        InputUsername2.addActionListener(new java.awt.event.ActionListener() {
+        sikluslayanan.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
+        sikluslayanan.setText("SIKLUS LAYANAN");
+
+        pembayaranberikutnyalabel.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
+        pembayaranberikutnyalabel.setText("PEMBAYARAN SELANJUTNYA");
+
+        pembayaranselanjutnya.setForeground(new java.awt.Color(255, 255, 255));
+
+        sikluscombobox.setFont(new java.awt.Font("Segoe UI", 0, 16)); // NOI18N
+        sikluscombobox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        inputnamalayanan1.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        inputnamalayanan1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                InputUsername2ActionPerformed(evt);
+                inputnamalayanan1ActionPerformed(evt);
             }
         });
-
-        Username2.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
-        Username2.setText("SIKLUS LAYANAN");
-
-        Username3.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
-        Username3.setText("PEMBAYARAN SELANJUTNYA");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(32, 32, 32)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(buttonaddimage, javax.swing.GroupLayout.DEFAULT_SIZE, 243, Short.MAX_VALUE)
-                    .addComponent(imagepanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(buttonadddata, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(Username)
-                    .addComponent(InputUsername)
-                    .addComponent(InputUsername1, javax.swing.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
-                    .addComponent(Username1)
-                    .addComponent(InputUsername2, javax.swing.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
-                    .addComponent(Username2)
-                    .addComponent(Username3)
-                    .addComponent(jDateChooser1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(inputnamalayanan1, javax.swing.GroupLayout.PREFERRED_SIZE, 228, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(buttonaddimage, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addComponent(buttonadddata, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(namalayanan)
+                            .addComponent(inputnamalayanan)
+                            .addComponent(inputbiayalayanan, javax.swing.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
+                            .addComponent(biayalayanan)
+                            .addComponent(sikluslayanan)
+                            .addComponent(pembayaranberikutnyalabel)
+                            .addComponent(pembayaranselanjutnya, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(sikluscombobox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addGap(116, 116, 116))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(186, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(Title)
-                        .addGap(335, 335, 335))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(SubTitle)
-                        .addGap(161, 161, 161))))
+            .addGroup(layout.createSequentialGroup()
+                .addGap(220, 220, 220)
+                .addComponent(Title)
+                .addGap(0, 0, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
+                .addGap(77, 77, 77)
+                .addComponent(SubTitle)
+                .addContainerGap(82, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(46, 46, 46)
+                .addGap(41, 41, 41)
                 .addComponent(Title)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGap(30, 30, 30)
                 .addComponent(SubTitle)
-                .addGap(48, 48, 48)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(Username)
-                        .addGap(18, 18, 18)
-                        .addComponent(InputUsername, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(12, 12, 12)
-                        .addComponent(Username1)
-                        .addGap(18, 18, 18)
-                        .addComponent(InputUsername1, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(Username2)
-                        .addGap(18, 18, 18)
-                        .addComponent(InputUsername2, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(Username3)
-                        .addGap(18, 18, 18)
-                        .addComponent(jDateChooser1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(47, 47, 47)
-                        .addComponent(buttonadddata, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(43, 43, 43)
-                        .addComponent(imagepanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(buttonaddimage)))
-                .addContainerGap(46, Short.MAX_VALUE))
+                .addGap(35, 35, 35)
+                .addComponent(namalayanan)
+                .addGap(18, 18, 18)
+                .addComponent(inputnamalayanan, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(12, 12, 12)
+                .addComponent(biayalayanan)
+                .addGap(18, 18, 18)
+                .addComponent(inputbiayalayanan, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(sikluslayanan)
+                .addGap(18, 18, 18)
+                .addComponent(sikluscombobox, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(pembayaranberikutnyalabel)
+                .addGap(18, 18, 18)
+                .addComponent(pembayaranselanjutnya, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(30, 30, 30)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(buttonaddimage, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(inputnamalayanan1, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(61, 61, 61)
+                .addComponent(buttonadddata, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(81, Short.MAX_VALUE))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
     private void buttonadddataActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonadddataActionPerformed
+        String serviceName = inputnamalayanan.getText();
+        String billAmountStr = inputbiayalayanan.getText();
+        String selectedCycleDisplay = (String) sikluscombobox.getSelectedItem();
+        java.util.Date utilDate = pembayaranselanjutnya.getDate();
+
+        LocalDate nextPaymentLocalDate = null;
+        if (utilDate != null) {
+            nextPaymentLocalDate = utilDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+
+        if (serviceName.isEmpty() || serviceName.equals(LocalizationService.getString("add.placeholder.serviceName"))) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("dialog.message.serviceNameEmpty"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        double billAmount;
+        try {
+            billAmount = Double.parseDouble(billAmountStr);
+            if (billAmount <= 0) {
+                JOptionPane.showMessageDialog(this, LocalizationService.getString("dialog.message.billAmountInvalid"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("dialog.message.billAmountNumeric"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (selectedCycleDisplay == null || nextPaymentLocalDate == null) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("dialog.message.cycleAndDateEmpty"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String cycleInternal = cycleDisplayToInternalMap.get(selectedCycleDisplay);
+        if (cycleInternal == null) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("dialog.message.cycleInvalid"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Subscription newSub = new Subscription();
+        newSub.setServiceName(serviceName);
+        newSub.setCost(billAmount);
+        newSub.setCurrency("IDR");
+        newSub.setBillingCycle(cycleInternal);
+        newSub.setNextDueDate(nextPaymentLocalDate);
+        newSub.setLogo(selectedLogoBytes);
+
+        SubscriptionDAO subDAO = new SubscriptionDAO();
+        boolean success = subDAO.addSubscription(newSub);
+
+        if (success) {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("dialog.message.addSuccess"),
+                    LocalizationService.getString("dialog.title.success"), JOptionPane.INFORMATION_MESSAGE);
+            if (parentUIForm != null) {
+                parentUIForm.refreshSubscriptionTable();
+            }
+            this.dispose();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("dialog.message.addFailed"),
+                    LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+        }
+
 
     }//GEN-LAST:event_buttonadddataActionPerformed
 
-    private void InputUsernameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_InputUsernameActionPerformed
+    private void inputnamalayananActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputnamalayananActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_InputUsernameActionPerformed
+    }//GEN-LAST:event_inputnamalayananActionPerformed
 
     private void buttonaddimageActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonaddimageActionPerformed
-        // TODO add your handling code here:
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle(LocalizationService.getString("dialog.title.selectLogo"));
+        int userSelection = fileChooser.showOpenDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
+                selectedLogoBytes = Files.readAllBytes(selectedFile.toPath());
+
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.imageLoadFailed", ex.getMessage()),
+                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+                selectedLogoBytes = null;
+            }
+        }
     }//GEN-LAST:event_buttonaddimageActionPerformed
 
-    private void InputUsername1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_InputUsername1ActionPerformed
+    private void inputbiayalayananActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputbiayalayananActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_InputUsername1ActionPerformed
+    }//GEN-LAST:event_inputbiayalayananActionPerformed
 
-    private void InputUsername2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_InputUsername2ActionPerformed
+    private void inputnamalayanan1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputnamalayanan1ActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_InputUsername2ActionPerformed
+    }//GEN-LAST:event_inputnamalayanan1ActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JTextField InputUsername;
-    private javax.swing.JTextField InputUsername1;
-    private javax.swing.JTextField InputUsername2;
     private javax.swing.JLabel SubTitle;
     private javax.swing.JLabel Title;
-    private javax.swing.JLabel Username;
-    private javax.swing.JLabel Username1;
-    private javax.swing.JLabel Username2;
-    private javax.swing.JLabel Username3;
+    private javax.swing.JLabel biayalayanan;
     private javax.swing.JButton buttonadddata;
     private javax.swing.JButton buttonaddimage;
-    private javax.swing.JPanel imagepanel;
-    private com.toedter.calendar.JDateChooser jDateChooser1;
+    private javax.swing.JTextField inputbiayalayanan;
+    private javax.swing.JTextField inputnamalayanan;
+    private javax.swing.JTextField inputnamalayanan1;
+    private javax.swing.JLabel namalayanan;
+    private javax.swing.JLabel pembayaranberikutnyalabel;
+    private com.toedter.calendar.JDateChooser pembayaranselanjutnya;
+    private javax.swing.JComboBox<String> sikluscombobox;
+    private javax.swing.JLabel sikluslayanan;
     // End of variables declaration//GEN-END:variables
 
     private void applyCustomThemeColors() {
         RegisterTheme.styleDialogBackground(this);
         RegisterTheme.styleLabelColor(Title, RegisterTheme.COLOR_FOREGROUND);
         RegisterTheme.styleLabelColor(SubTitle, RegisterTheme.COLOR_PLACEHOLDER);
-        RegisterTheme.styleLabelColor(Username, RegisterTheme.COLOR_FOREGROUND);
-        RegisterTheme.styleTextField(InputUsername);
-        RegisterTheme.addPlaceholder(InputUsername, "Masukan Username");
+        RegisterTheme.styleLabelColor(namalayanan, RegisterTheme.COLOR_FOREGROUND);
+        RegisterTheme.styleTextField(inputnamalayanan);
+        RegisterTheme.styleTextField(inputbiayalayanan);
+        RegisterTheme.styleComboBox(sikluscombobox);
         RegisterTheme.styleButton(buttonadddata);
+        RegisterTheme.styleDateChooser(pembayaranselanjutnya);
+    }
+
+    private void updateDueDate() {
+        String selectedDisplayText = (String) sikluscombobox.getSelectedItem();
+        if (selectedDisplayText == null) {
+            return;
+        }
+
+        String pilihanSiklus = cycleDisplayToInternalMap.get(selectedDisplayText);
+
+        if (pilihanSiklus == null) {
+            pembayaranselanjutnya.setEnabled(true);
+            return;
+        }
+
+        if (pilihanSiklus.equals("Pilih Tanggal Manual...")) {
+            pembayaranselanjutnya.setEnabled(true);
+        } else {
+            pembayaranselanjutnya.setEnabled(false);
+        }
+
+        LocalDate tanggalHariIni = LocalDate.now();
+        LocalDate tanggalJatuhTempo = tanggalHariIni;
+
+        switch (pilihanSiklus) {
+            case "1 Bulan" ->
+                tanggalJatuhTempo = tanggalHariIni.plusMonths(1);
+            case "3 Bulan" ->
+                tanggalJatuhTempo = tanggalHariIni.plusMonths(3);
+            case "6 Bulan" ->
+                tanggalJatuhTempo = tanggalHariIni.plusMonths(6);
+            case "1 Tahun" ->
+                tanggalJatuhTempo = tanggalHariIni.plusYears(1);
+        }
+
+        java.util.Date tanggalUntukChooser = java.util.Date.from(tanggalJatuhTempo.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        pembayaranselanjutnya.setDate(tanggalUntukChooser);
+    }
+
+    private void updateTexts() {
+        // 1. Atur Judul Dialog & Label-label
+        this.setTitle(LocalizationService.getString("add.dialog.title"));
+        Title.setText(LocalizationService.getString("add.title"));
+        SubTitle.setText(LocalizationService.getString("add.subtitle"));
+        namalayanan.setText(LocalizationService.getString("add.label.serviceName"));
+        biayalayanan.setText(LocalizationService.getString("add.label.serviceCost"));
+        sikluslayanan.setText(LocalizationService.getString("add.label.serviceCycle"));
+        pembayaranberikutnyalabel.setText(LocalizationService.getString("add.label.nextPayment"));
+
+        // 2. Atur Teks Tombol
+        buttonadddata.setText(LocalizationService.getString("add.button.saveData"));
+        buttonaddimage.setText(LocalizationService.getString("add.button.addLogo"));
+
+        // 3. Atur Placeholder untuk Input Fields
+        RegisterTheme.updatePlaceholder(inputnamalayanan, LocalizationService.getString("add.placeholder.serviceName"));
+        RegisterTheme.updatePlaceholder(inputbiayalayanan, LocalizationService.getString("add.placeholder.serviceCost"));
+
+        // 4. Perbarui Item ComboBox Siklus
+        String selectedItemBeforeUpdate = (String) sikluscombobox.getSelectedItem(); // Simpan pilihan sebelumnya
+
+        sikluscombobox.removeAllItems(); // Hapus semua item lama
+        cycleDisplayToInternalMap = new LinkedHashMap<>(); // Buat ulang map
+
+        // Tambahkan item yang sudah dilokalisasi dan petakan ke nilai internalnya
+        cycleDisplayToInternalMap.put(LocalizationService.getString("cycle.monthly"), "1 Bulan");
+        cycleDisplayToInternalMap.put(LocalizationService.getString("cycle.quarterly"), "3 Bulan");
+        cycleDisplayToInternalMap.put(LocalizationService.getString("cycle.halfYearly"), "6 Bulan");
+        cycleDisplayToInternalMap.put(LocalizationService.getString("cycle.yearly"), "1 Tahun");
+        cycleDisplayToInternalMap.put(LocalizationService.getString("cycle.manual"), "Pilih Tanggal Manual...");
+
+        for (String displayValue : cycleDisplayToInternalMap.keySet()) {
+            sikluscombobox.addItem(displayValue);
+        }
+
+        // Coba kembalikan pilihan sebelumnya jika ada di map baru
+        if (cycleDisplayToInternalMap.containsKey(selectedItemBeforeUpdate)) {
+            sikluscombobox.setSelectedItem(selectedItemBeforeUpdate);
+        } else {
+            // Jika pilihan sebelumnya tidak ada di bahasa baru
+            sikluscombobox.setSelectedItem(LocalizationService.getString("cycle.monthly"));
+        }
+
+        // Panggil updateDueDate untuk memastikan tanggal jatuh tempo diperbarui setelah item combobox diubah
+        updateDueDate();
     }
 
 }

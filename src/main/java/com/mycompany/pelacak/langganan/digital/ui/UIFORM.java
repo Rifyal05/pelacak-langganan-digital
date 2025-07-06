@@ -4,7 +4,24 @@
  */
 package com.mycompany.pelacak.langganan.digital.ui;
 
+import com.mycompany.pelacak.langganan.digital.theme.UIFORMTHEME;
+import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
+import com.mycompany.pelacak.langganan.digital.db.SubscriptionDAO;
+import com.mycompany.pelacak.langganan.digital.model.Subscription;
+import com.mycompany.pelacak.langganan.digital.util.CurrencyFormatter;
+import com.mycompany.pelacak.langganan.digital.util.SerializationUtil;
+import java.awt.BorderLayout;
+import java.awt.HeadlessException;
+import java.io.File;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.event.ListSelectionEvent;
 
 /**
  *
@@ -13,14 +30,22 @@ import javax.swing.JOptionPane;
 @SuppressWarnings("serial")
 public class UIFORM extends javax.swing.JFrame {
 
+    private final SubscriptionDAO subscriptionDAO;
+    private Subscription selectedSubscription;
+    private Map<String, Double> periodDisplayToMultiplierMap;
+
     /**
      * Creates new form UIFORM
      */
     public UIFORM() {
         initComponents();
+        subscriptionDAO = new SubscriptionDAO();
         applyCustomTheme();
         this.setExtendedState(MAXIMIZED_BOTH);
-        this.setTitle("  PELACAK LANGGANAN DIGITAL");
+        updateTexts();
+        imagefield.setLayout(new BorderLayout());
+
+        setupTableSelectionListener();
 
     }
 
@@ -55,6 +80,7 @@ public class UIFORM extends javax.swing.JFrame {
         logoutbutton = new javax.swing.JButton();
         intllabelbiayatotal = new javax.swing.JLabel();
         labelbiayalangganantotal = new javax.swing.JLabel();
+        comboboxbiayalangganantotal = new javax.swing.JComboBox<>();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -81,7 +107,7 @@ public class UIFORM extends javax.swing.JFrame {
         );
         chartfieldLayout.setVerticalGroup(
             chartfieldLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 299, Short.MAX_VALUE)
+            .addGap(0, 318, Short.MAX_VALUE)
         );
 
         panelinfo.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -113,38 +139,33 @@ public class UIFORM extends javax.swing.JFrame {
         );
 
         subscriptionname.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        subscriptionname.setText("nama");
 
         billamount.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        billamount.setText("biaya");
 
         subscriptioncycle.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        subscriptioncycle.setText("siklus");
 
         paymentdeadline.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
-        paymentdeadline.setText("tenggat");
 
         javax.swing.GroupLayout panelinfoLayout = new javax.swing.GroupLayout(panelinfo);
         panelinfo.setLayout(panelinfoLayout);
         panelinfoLayout.setHorizontalGroup(
             panelinfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panelinfoLayout.createSequentialGroup()
+                .addGap(14, 14, 14)
                 .addGroup(panelinfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(panelinfoLayout.createSequentialGroup()
-                        .addGap(35, 35, 35)
                         .addComponent(intllabellayanan, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(subscriptionname, javax.swing.GroupLayout.PREFERRED_SIZE, 229, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, panelinfoLayout.createSequentialGroup()
-                        .addGap(14, 14, 14)
+                    .addGroup(panelinfoLayout.createSequentialGroup()
                         .addGroup(panelinfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(billamount, javax.swing.GroupLayout.PREFERRED_SIZE, 182, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(intllabelbiaya, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 13, Short.MAX_VALUE)
                         .addGroup(panelinfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(intllabelsiklus, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(subscriptioncycle, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                        .addGap(0, 7, Short.MAX_VALUE)))
                 .addGroup(panelinfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(panelinfoLayout.createSequentialGroup()
                         .addGap(14, 14, 14)
@@ -202,7 +223,7 @@ public class UIFORM extends javax.swing.JFrame {
             }
         });
 
-        searchfield.setText("Cari Sesuatu Disini, Hehe...");
+        searchfield.setText("Cari sesuatu disini, hehe..");
         searchfield.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 searchfieldFocusGained(evt);
@@ -213,10 +234,20 @@ public class UIFORM extends javax.swing.JFrame {
         });
 
         loadbutton.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        loadbutton.setText("LOAD");
+        loadbutton.setText("MUAT DATA");
+        loadbutton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loadbuttonActionPerformed(evt);
+            }
+        });
 
         savebutton.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        savebutton.setText("SAVE");
+        savebutton.setText("SIMPAN");
+        savebutton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                savebuttonActionPerformed(evt);
+            }
+        });
 
         logoutbutton.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
         logoutbutton.setText("LOGOUT");
@@ -230,7 +261,9 @@ public class UIFORM extends javax.swing.JFrame {
         intllabelbiayatotal.setText("TOTAL BIAYA LANGGANAN");
 
         labelbiayalangganantotal.setFont(new java.awt.Font("Segoe UI", 0, 20)); // NOI18N
-        labelbiayalangganantotal.setText("BIAYA LANGGANAN");
+        labelbiayalangganantotal.setText("MENGHITUNG..");
+
+        comboboxbiayalangganantotal.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -250,27 +283,27 @@ public class UIFORM extends javax.swing.JFrame {
                     .addComponent(jScrollPane1))
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                    .addComponent(chartfield, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(panelinfo, javax.swing.GroupLayout.PREFERRED_SIZE, 577, Short.MAX_VALUE))
-                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(loadbutton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGap(26, 26, 26)
-                                    .addComponent(savebutton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGap(24, 24, 24)
-                                    .addComponent(logoutbutton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGap(6, 6, 6)))
-                            .addGroup(layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(intllabelbiayatotal)))
-                        .addContainerGap())
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(labelbiayalangganantotal, javax.swing.GroupLayout.PREFERRED_SIZE, 315, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(85, 85, 85))))
+                        .addComponent(intllabelbiayatotal))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addComponent(chartfield, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(panelinfo, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(loadbutton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(26, 26, 26)
+                                .addComponent(savebutton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(24, 24, 24)
+                                .addComponent(logoutbutton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(6, 6, 6)))
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                            .addGap(18, 18, 18)
+                            .addComponent(comboboxbiayalangganantotal, javax.swing.GroupLayout.PREFERRED_SIZE, 218, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(labelbiayalangganantotal, javax.swing.GroupLayout.PREFERRED_SIZE, 315, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -294,8 +327,10 @@ public class UIFORM extends javax.swing.JFrame {
                         .addComponent(chartfield, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(intllabelbiayatotal)
-                        .addGap(13, 13, 13)
-                        .addComponent(labelbiayalangganantotal)
+                        .addGap(9, 9, 9)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(labelbiayalangganantotal)
+                            .addComponent(comboboxbiayalangganantotal, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(27, 27, 27))
                     .addComponent(jScrollPane1)))
         );
@@ -304,20 +339,50 @@ public class UIFORM extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void editbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editbuttonActionPerformed
-        editSubscription es = new editSubscription();
-        es.setVisible(Boolean.TRUE);
+        if (selectedSubscription == null) {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("dialog.message.selectSubscriptionToEdit"),
+                    LocalizationService.getString("dialog.title.error"), JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        editSubscription es = new editSubscription(this, true, selectedSubscription);
+        es.setVisible(true);
     }//GEN-LAST:event_editbuttonActionPerformed
 
     private void deletebuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deletebuttonActionPerformed
+        if (selectedSubscription == null) {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("dialog.message.selectSubscriptionToDelete"),
+                    LocalizationService.getString("dialog.title.error"), JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
+        int confirm = JOptionPane.showConfirmDialog(this,
+                LocalizationService.getString("dialog.message.confirmDelete", selectedSubscription.getServiceName()),
+                LocalizationService.getString("dialog.title.confirmation"),
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            boolean success = subscriptionDAO.deleteSubscription(selectedSubscription.getId());
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.deleteSuccess"),
+                        LocalizationService.getString("dialog.title.success"), JOptionPane.INFORMATION_MESSAGE);
+                refreshSubscriptionTable();
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.deleteFailed"),
+                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }//GEN-LAST:event_deletebuttonActionPerformed
 
     private void logoutbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logoutbuttonActionPerformed
 
         int pilihan = JOptionPane.showConfirmDialog(
                 rootPane,
-                "Yakin ingin Logout?",
-                "Konfirmasi Logout",
+                LocalizationService.getString("main.logout.confirm.message"),
+                LocalizationService.getString("main.logout.confirm.title"),
                 JOptionPane.YES_NO_OPTION
         );
 
@@ -328,23 +393,128 @@ public class UIFORM extends javax.swing.JFrame {
                 loginFrame.setVisible(true);
 
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat logout: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("login.message.systemError", e.getMessage()),
+                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
             }
         }
     }//GEN-LAST:event_logoutbuttonActionPerformed
 
-    private void searchfieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_searchfieldFocusGained
-        searchfield.setText("");
-    }//GEN-LAST:event_searchfieldFocusGained
+    private void addbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addbuttonActionPerformed
+        addSubscription as = new addSubscription(this, true);
+        as.setVisible(true);
+    }//GEN-LAST:event_addbuttonActionPerformed
 
     private void searchfieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_searchfieldFocusLost
         searchfield.setText("Cari Sesuatu Disini, Hehe...");
     }//GEN-LAST:event_searchfieldFocusLost
 
-    private void addbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addbuttonActionPerformed
-        addSubscription as = new addSubscription();
-        as.setVisible(Boolean.TRUE);
-    }//GEN-LAST:event_addbuttonActionPerformed
+    private void searchfieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_searchfieldFocusGained
+        searchfield.setText("");
+    }//GEN-LAST:event_searchfieldFocusGained
+
+    private void savebuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_savebuttonActionPerformed
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle(LocalizationService.getString("dialog.title.saveFile"));
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                LocalizationService.getString("fileChooser.filter.description"), "ser");
+        fileChooser.setFileFilter(filter);
+        fileChooser.setSelectedFile(new File(fileChooser.getCurrentDirectory(), "subscriptions.ser"));
+
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+            if (!fileToSave.getName().toLowerCase().endsWith(".ser")) {
+                fileToSave = new File(fileToSave.getAbsolutePath() + ".ser");
+            }
+
+            List<Subscription> currentSubscriptions = subscriptionDAO.getAllSubscriptions();
+            boolean success = SerializationUtil.saveSubscriptionsToFile(currentSubscriptions, fileToSave);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.saveToFileSuccess"),
+                        LocalizationService.getString("dialog.title.success"), JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.saveToFileFailed"),
+                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("dialog.message.saveCancelled"),
+                    LocalizationService.getString("dialog.title.info"), JOptionPane.INFORMATION_MESSAGE);
+        }
+    }//GEN-LAST:event_savebuttonActionPerformed
+
+    private void loadbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadbuttonActionPerformed
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle(LocalizationService.getString("dialog.title.loadFile"));
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                LocalizationService.getString("fileChooser.filter.description"), "ser");
+        fileChooser.setFileFilter(filter);
+
+        int userSelection = fileChooser.showOpenDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToLoad = fileChooser.getSelectedFile();
+
+            List<Subscription> loadedSubscriptions = SerializationUtil.loadSubscriptionsFromFile(fileToLoad);
+
+            if (loadedSubscriptions.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.loadFromFileEmpty"),
+                        LocalizationService.getString("dialog.title.info"), JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    LocalizationService.getString("dialog.message.confirmLoadOverwrite"),
+                    LocalizationService.getString("dialog.title.confirmation"),
+                    JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    subscriptionDAO.deleteAllSubscriptions();
+
+                    boolean allAddedSuccessfully = true;
+                    for (Subscription sub : loadedSubscriptions) {
+                        sub.setId(0);
+                        if (!subscriptionDAO.addSubscription(sub)) {
+                            allAddedSuccessfully = false;
+                        }
+                    }
+
+                    if (allAddedSuccessfully) {
+                        JOptionPane.showMessageDialog(this,
+                                LocalizationService.getString("dialog.message.loadAndSyncSuccess"),
+                                LocalizationService.getString("dialog.title.success"), JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                                LocalizationService.getString("dialog.message.loadAndSyncPartial"),
+                                LocalizationService.getString("dialog.title.warning"), JOptionPane.WARNING_MESSAGE);
+                    }
+
+                    refreshSubscriptionTable();
+
+                } catch (HeadlessException e) {
+                    JOptionPane.showMessageDialog(this,
+                            LocalizationService.getString("dialog.message.loadAndSyncFailed", e.getMessage()),
+                            LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.loadCancelled"),
+                        LocalizationService.getString("dialog.title.info"), JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("dialog.message.loadCancelled"),
+                    LocalizationService.getString("dialog.title.info"), JOptionPane.INFORMATION_MESSAGE);
+        }
+
+    }//GEN-LAST:event_loadbuttonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -383,6 +553,7 @@ public class UIFORM extends javax.swing.JFrame {
     private javax.swing.JButton addbutton;
     private javax.swing.JLabel billamount;
     private javax.swing.JPanel chartfield;
+    private javax.swing.JComboBox<String> comboboxbiayalangganantotal;
     private javax.swing.JButton deletebutton;
     private javax.swing.JButton editbutton;
     private javax.swing.JPanel imagefield;
@@ -414,7 +585,180 @@ public class UIFORM extends javax.swing.JFrame {
         UIFORMTHEME.styleButton(savebutton);
         UIFORMTHEME.stylePanelCard(panelinfo);
         UIFORMTHEME.stylePanelCard(chartfield);
-        UIFORMTHEME.styleSearchField(searchfield);
+//        UIFORMTHEME.styleSearchField(searchfield);
         UIFORMTHEME.styleTable(tabellangganan, jScrollPane1);
     }
+
+    // DI UIFORM.java, dalam method updateTexts()
+    private void updateTexts() {
+        this.setTitle(LocalizationService.getString("main.frame.title"));
+
+        intllabellayanan.setText(LocalizationService.getString("main.info.service"));
+        intllabelbiaya.setText(LocalizationService.getString("main.info.cost"));
+        intllabelsiklus.setText(LocalizationService.getString("main.info.cycle"));
+        intllabeltenggat.setText(LocalizationService.getString("main.info.due"));
+
+        intllabelbiayatotal.setText(LocalizationService.getString("main.info.totalCostLabel"));
+        // labelbiayalangganantotal.setText(LocalizationService.getString("main.info.totalCostValue")); // <-- HAPUS INI
+
+        addbutton.setText(LocalizationService.getString("main.button.add"));
+        editbutton.setText(LocalizationService.getString("main.button.edit"));
+        deletebutton.setText(LocalizationService.getString("main.button.delete"));
+        loadbutton.setText(LocalizationService.getString("main.button.load"));
+        savebutton.setText(LocalizationService.getString("main.button.save"));
+        logoutbutton.setText(LocalizationService.getString("main.button.logout"));
+
+        UIFORMTHEME.updatePlaceholder(searchfield, LocalizationService.getString("main.search.placeholder"));
+
+        DefaultTableModel model = (DefaultTableModel) tabellangganan.getModel();
+        String[] newHeaders = {
+            LocalizationService.getString("main.table.header.id"),
+            LocalizationService.getString("main.table.header.service"),
+            LocalizationService.getString("main.table.header.cost"),
+            LocalizationService.getString("main.table.header.cycle"),
+            LocalizationService.getString("main.table.header.due")
+        };
+        model.setColumnIdentifiers(newHeaders);
+
+        // --- PENTING: Perbarui dan set pilihan ComboBox total biaya ---
+        String selectedItemBeforeUpdate = (String) comboboxbiayalangganantotal.getSelectedItem();
+        setupComboBoxTotalCost(); // Ini akan mengisi ulang item-item combobox
+        if (selectedItemBeforeUpdate != null && periodDisplayToMultiplierMap.containsKey(selectedItemBeforeUpdate)) {
+            comboboxbiayalangganantotal.setSelectedItem(selectedItemBeforeUpdate);
+        } else {
+            comboboxbiayalangganantotal.setSelectedItem(LocalizationService.getString("totalCost.period.monthly"));
+        }
+
+        // Panggil update display total setelah semua teks dilokalisasi dan combobox diatur
+        updateTotalCostDisplay();
+    }
+
+    public void refreshSubscriptionTable() {
+        DefaultTableModel model = (DefaultTableModel) tabellangganan.getModel();
+        model.setRowCount(0);
+
+        List<Subscription> subscriptions = subscriptionDAO.getAllSubscriptions();
+        for (Subscription sub : subscriptions) {
+            model.addRow(new Object[]{
+                sub.getId(),
+                sub.getServiceName(),
+                sub.getCost(),
+                sub.getBillingCycle(),
+                sub.getNextDueDate()
+            });
+        }
+
+        // === PANGGIL METODE PEMBARUAN TOTAL BIAYA DI SINI ===
+        updateTotalCostDisplay();
+    }
+
+    private void setupTableSelectionListener() {
+        tabellangganan.getSelectionModel().addListSelectionListener((ListSelectionEvent e) -> {
+            if (!e.getValueIsAdjusting() && tabellangganan.getSelectedRow() != -1) {
+                int selectedRow = tabellangganan.getSelectedRow();
+                int subscriptionId = (int) tabellangganan.getValueAt(selectedRow, 0);
+                selectedSubscription = subscriptionDAO.getSubscriptionById(subscriptionId);
+
+                if (selectedSubscription != null) {
+                    subscriptionname.setText(selectedSubscription.getServiceName());
+                    billamount.setText(String.valueOf(selectedSubscription.getCost()));
+                    subscriptioncycle.setText(selectedSubscription.getBillingCycle());
+                    paymentdeadline.setText(selectedSubscription.getNextDueDate() != null ? selectedSubscription.getNextDueDate().toString() : "");
+
+                    byte[] logoBytes = selectedSubscription.getLogo();
+                    if (logoBytes != null && logoBytes.length > 0) {
+                        ImageIcon imageIcon = new ImageIcon(logoBytes);
+                        java.awt.Image image = imageIcon.getImage().getScaledInstance(
+                                imagefield.getPreferredSize().width,
+                                imagefield.getPreferredSize().height,
+                                java.awt.Image.SCALE_SMOOTH);
+
+                        imagefield.removeAll();
+                        imagefield.add(new javax.swing.JLabel(new ImageIcon(image)), BorderLayout.CENTER);
+                        imagefield.revalidate();
+                        imagefield.repaint();
+                    } else {
+                        imagefield.removeAll();
+                        imagefield.revalidate();
+                        imagefield.repaint();
+                    }
+                } else {
+                    subscriptionname.setText("");
+                    billamount.setText("");
+                    subscriptioncycle.setText("");
+                    paymentdeadline.setText("");
+                    imagefield.removeAll();
+                    imagefield.revalidate();
+                    imagefield.repaint();
+
+                    selectedSubscription = null;
+                }
+            }
+        });
+    }
+
+    private double calculateTotalMonthlyRate() {
+        double totalMonthlyRate = 0.0;
+        List<Subscription> subscriptions = subscriptionDAO.getAllSubscriptions();
+
+        for (Subscription sub : subscriptions) {
+            double cost = sub.getCost();
+            String billingCycle = sub.getBillingCycle();
+
+            switch (billingCycle) {
+                case "1 Bulan" ->
+                    totalMonthlyRate += cost;
+                case "3 Bulan" ->
+                    totalMonthlyRate += (cost / 3.0);
+                case "6 Bulan" ->
+                    totalMonthlyRate += (cost / 6.0);
+                case "1 Tahun" ->
+                    totalMonthlyRate += (cost / 12.0);
+                default -> {
+                    totalMonthlyRate += cost; // Asumsi bulanan jika tidak cocok
+                    System.err.println("Siklus pembayaran tidak dikenal atau manual: " + billingCycle + ". Biaya ditambahkan sebagai bulanan.");
+                }
+            }
+        }
+        return totalMonthlyRate;
+    }
+
+// --- METHOD BARU: Memperbarui tampilan total biaya berdasarkan pilihan ComboBox ---
+    private void updateTotalCostDisplay() {
+        double monthlyRate = calculateTotalMonthlyRate(); // Dapatkan tarif bulanan dasar
+        String selectedPeriodDisplay = (String) comboboxbiayalangganantotal.getSelectedItem();
+        Double multiplier = periodDisplayToMultiplierMap.get(selectedPeriodDisplay);
+
+        if (multiplier == null) {
+            multiplier = 1.0; // Default ke 1x (bulanan) jika pilihan tidak valid
+        }
+
+        double totalCost = monthlyRate * multiplier;
+        labelbiayalangganantotal.setText(CurrencyFormatter.formatRupiah(totalCost));
+    }
+
+// --- METHOD BARU: Menyiapkan ComboBox total biaya ---
+    private void setupComboBoxTotalCost() {
+        comboboxbiayalangganantotal.removeAllItems();
+        periodDisplayToMultiplierMap = new LinkedHashMap<>();
+
+        // Isi map dengan nilai yang dilokalisasi dan multiplier-nya
+        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.monthly"), 1.0);
+        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.quarterly"), 3.0);
+        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.halfYearly"), 6.0);
+        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.yearly"), 12.0);
+
+        // Tambahkan item ke ComboBox
+        for (String displayValue : periodDisplayToMultiplierMap.keySet()) {
+            comboboxbiayalangganantotal.addItem(displayValue);
+        }
+
+        // Set listener untuk ComboBox. Panggil updateTotalCostDisplay() saat pilihan berubah.
+        // Hapus listener lama untuk menghindari duplikasi
+        for (java.awt.event.ActionListener al : comboboxbiayalangganantotal.getActionListeners()) {
+            comboboxbiayalangganantotal.removeActionListener(al);
+        }
+        comboboxbiayalangganantotal.addActionListener(e -> updateTotalCostDisplay());
+    }
+
 }

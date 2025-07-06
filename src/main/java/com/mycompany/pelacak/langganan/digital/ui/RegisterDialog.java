@@ -4,8 +4,10 @@
  */
 package com.mycompany.pelacak.langganan.digital.ui;
 
+import com.mycompany.pelacak.langganan.digital.theme.RegisterTheme;
 import com.mycompany.pelacak.langganan.digital.db.UserDAO;
 import com.mycompany.pelacak.langganan.digital.model.Users;
+import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
 import com.mycompany.pelacak.langganan.digital.service.PasswordService;
 import java.awt.HeadlessException;
 import javax.swing.JOptionPane;
@@ -17,12 +19,14 @@ import javax.swing.JOptionPane;
 @SuppressWarnings("serial")
 public class RegisterDialog extends javax.swing.JDialog {
 
-    public RegisterDialog() {
-
+    public RegisterDialog(java.awt.Frame parent, boolean modal) {
+        super(parent, modal); 
         initComponents();
         applyCustomThemeColors();
+//        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+//        this.setTitle("REGISTRASI");
+        updateTexts();
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        this.setTitle("REGISTRASI");
         this.setLocationRelativeTo(null);
     }
 
@@ -116,7 +120,7 @@ public class RegisterDialog extends javax.swing.JDialog {
                         .addGap(95, 95, 95)
                         .addComponent(SubTitle))
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(150, 150, 150)
+                        .addGap(158, 158, 158)
                         .addComponent(Title)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -154,9 +158,6 @@ public class RegisterDialog extends javax.swing.JDialog {
     }//GEN-LAST:event_LoginLinkMouseClicked
 
     private void ButtonRegisterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ButtonRegisterActionPerformed
-
-        final String USERNAME_PLACEHOLDER = "Masukan Username";
-        final String USERNAME_REGEX_PATTERN = "^[a-zA-Z0-9]+$";
         final int USERNAME_MIN_LENGTH = 4;
         UserDAO userDAO = new UserDAO();
 
@@ -166,46 +167,42 @@ public class RegisterDialog extends javax.swing.JDialog {
         String confirmPassword = new String(KonfirmasiPassword.getPassword());
 
         // VALIDASI APAKAH USERNAME KOSONG ATAU MASIH PLACEHOLDER
-        if (username.isEmpty() || username.equals(USERNAME_PLACEHOLDER)) {
-            JOptionPane.showMessageDialog(this, "Username tidak boleh kosong!", "Error", JOptionPane.ERROR_MESSAGE);
+        if (username.isEmpty() || username.equals(LocalizationService.getString("register.placeholder.username"))) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.usernameEmpty"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         // VALIDASI FORMAT USERNAME
-        if (!username.matches(USERNAME_REGEX_PATTERN)) {
-            JOptionPane.showMessageDialog(this,
-                    "Username hanya boleh berisi huruf dan angka, tanpa spasi atau simbol.",
-                    "Format Username Salah",
-                    JOptionPane.ERROR_MESSAGE);
-            return; // Hentikan eksekusi jika format salah
+        if (!username.matches("^[a-zA-Z0-9]+$")) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.usernameFormatInvalid"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
         // VALIDASI PANJANG MINIMUM USERNAME
         if (username.length() < USERNAME_MIN_LENGTH) {
-            JOptionPane.showMessageDialog(this,
-                    "Username minimal harus " + USERNAME_MIN_LENGTH + " karakter.",
-                    "Username Terlalu Pendek",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.usernameTooShort", USERNAME_MIN_LENGTH), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         //VALIDASI KOLOM PASSWORD
-        if (password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Password tidak boleh kosong!", "Error", JOptionPane.ERROR_MESSAGE);
+        if (password.isEmpty() || password.equals(LocalizationService.getString("register.placeholder.password"))) {
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.passwordEmpty"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         // VALIDASI KONFIRMASI PASSWORD
         if (!password.equals(confirmPassword)) {
-            JOptionPane.showMessageDialog(this, "Password dan Konfirmasi Password tidak cocok!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.passwordMismatch"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
             return;
         }
+        
+        // VALIDASI APAKAH USERNAME SUDAH DIGUNAKAN
         if (userDAO.isUsernameExists(username.toLowerCase())) {
             JOptionPane.showMessageDialog(this,
-                    "Username '" + username + "' sudah digunakan. Silakan pilih username lain.",
-                    "Username Tidak Tersedia",
+                    LocalizationService.getString("register.message.usernameExists", username),
+                    LocalizationService.getString("register.message.usernameExists.title"),
                     JOptionPane.ERROR_MESSAGE);
-            return; // Hentikan proses registrasi
+            return;
         }
 
         // PROSES HASHING JIKA LOLOS VALIDASI
@@ -215,18 +212,17 @@ public class RegisterDialog extends javax.swing.JDialog {
 
             Users newUser = new Users();
 
-            
             newUser.setUsername(username.toLowerCase()); // Atur username dengan mengonversinya ke huruf kecil
             newUser.setHashed_password(hashedPassword);
             newUser.setSalt(salt);
             userDAO.addUser(newUser);
 
-            JOptionPane.showMessageDialog(this, "Registrasi berhasil! Silakan login.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.registrationSuccess"), LocalizationService.getString("dialog.title.success"), JOptionPane.INFORMATION_MESSAGE);
 
             dispose();
 
         } catch (HeadlessException e) {
-            JOptionPane.showMessageDialog(this, "Registrasi gagal. Coba lagi.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, LocalizationService.getString("register.message.registrationFailed"), LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_ButtonRegisterActionPerformed
 
@@ -244,6 +240,7 @@ public class RegisterDialog extends javax.swing.JDialog {
     private javax.swing.JLabel Username;
     // End of variables declaration//GEN-END:variables
 
+    // PASTIKAN METHOD INI TERLIHAT SEPERTI INI
     private void applyCustomThemeColors() {
         RegisterTheme.styleDialogBackground(this);
         RegisterTheme.styleLabelColor(Title, RegisterTheme.COLOR_FOREGROUND);
@@ -253,12 +250,27 @@ public class RegisterDialog extends javax.swing.JDialog {
         RegisterTheme.styleLabelColor(Password1, RegisterTheme.COLOR_FOREGROUND);
         RegisterTheme.styleLinkLabelColor(LoginLink);
         RegisterTheme.styleTextField(InputUsername);
-        RegisterTheme.addPlaceholder(InputUsername, "Masukan Username");
+        // RegisterTheme.addPlaceholder(InputUsername, "Masukan Username"); 
         RegisterTheme.stylePasswordField(InputPassword);
-        RegisterTheme.addPlaceholder(InputPassword, "Masukan Password");
+        // RegisterTheme.addPlaceholder(InputPassword, "Masukan Password"); 
         RegisterTheme.stylePasswordField(KonfirmasiPassword);
-        RegisterTheme.addPlaceholder(KonfirmasiPassword, "Konfirmasi Password");
+        // RegisterTheme.addPlaceholder(KonfirmasiPassword, "Konfirmasi Password");
         RegisterTheme.styleButton(ButtonRegister);
+    }
+
+    private void updateTexts() {
+        this.setTitle(LocalizationService.getString("register.dialog.title"));
+        Title.setText(LocalizationService.getString("register.title"));
+        SubTitle.setText(LocalizationService.getString("register.subtitle"));
+        Username.setText(LocalizationService.getString("register.label.username"));
+        Password.setText(LocalizationService.getString("register.label.password"));
+        Password1.setText(LocalizationService.getString("register.label.confirmPassword"));
+        ButtonRegister.setText(LocalizationService.getString("register.button.register"));
+        LoginLink.setText(LocalizationService.getString("register.link.login"));
+
+        RegisterTheme.updatePlaceholder(InputUsername, LocalizationService.getString("register.placeholder.username"));
+        RegisterTheme.updatePlaceholder(InputPassword, LocalizationService.getString("register.placeholder.password"));
+        RegisterTheme.updatePlaceholder(KonfirmasiPassword, LocalizationService.getString("register.placeholder.confirmPassword"));
     }
 
 }

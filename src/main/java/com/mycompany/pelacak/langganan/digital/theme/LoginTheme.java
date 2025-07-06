@@ -2,12 +2,13 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.pelacak.langganan.digital.ui;
+package com.mycompany.pelacak.langganan.digital.theme;
 
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -26,7 +27,7 @@ public class LoginTheme {
     public static final Color COLOR_FOREGROUND = Color.WHITE;
     public static final Color COLOR_PLACEHOLDER = new Color(140, 140, 140);
     public static final Color COLOR_BUTTON_TEXT = Color.WHITE;
-    public static final Color COLOR_BORDER_TEXT_FIELD = new Color(70,70,75);
+    public static final Color COLOR_BORDER_TEXT_FIELD = new Color(70, 70, 75);
 
     public static void styleFrameBackground(JFrame frame) {
         frame.getContentPane().setBackground(COLOR_BACKGROUND);
@@ -46,8 +47,8 @@ public class LoginTheme {
         textField.setForeground(COLOR_PLACEHOLDER);
         textField.setCaretColor(COLOR_FOREGROUND);
         textField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(COLOR_BORDER_TEXT_FIELD),
-            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+                BorderFactory.createLineBorder(COLOR_BORDER_TEXT_FIELD),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
         ));
     }
 
@@ -56,8 +57,8 @@ public class LoginTheme {
         passwordField.setForeground(COLOR_PLACEHOLDER);
         passwordField.setCaretColor(COLOR_FOREGROUND);
         passwordField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(COLOR_BORDER_TEXT_FIELD),
-            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+                BorderFactory.createLineBorder(COLOR_BORDER_TEXT_FIELD),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
         ));
     }
 
@@ -71,8 +72,8 @@ public class LoginTheme {
         if (textField.getText().equals(placeholderText)) {
             textField.setForeground(COLOR_PLACEHOLDER);
         } else if (textField.getText().isEmpty()) {
-             textField.setText(placeholderText);
-             textField.setForeground(COLOR_PLACEHOLDER);
+            textField.setText(placeholderText);
+            textField.setForeground(COLOR_PLACEHOLDER);
         } else {
             textField.setForeground(COLOR_FOREGROUND);
         }
@@ -85,6 +86,7 @@ public class LoginTheme {
                     textField.setForeground(COLOR_FOREGROUND);
                 }
             }
+
             @Override
             public void focusLost(FocusEvent e) {
                 if (textField.getText().isEmpty()) {
@@ -120,11 +122,44 @@ public class LoginTheme {
                     clearPlaceholder.run();
                 }
             }
+
             @Override
             public void focusLost(FocusEvent e) {
                 if (passwordField.getPassword().length == 0) {
                     setPlaceholder.run();
                 }
+            }
+        });
+    }
+
+    public static void updatePlaceholder(JTextField component, String newPlaceholder) {
+        for (FocusListener listener : component.getFocusListeners()) {
+            component.removeFocusListener(listener);
+        }
+        component.setText(newPlaceholder);
+        component.setForeground(COLOR_PLACEHOLDER);
+
+        component.addFocusListener(new FocusAdapter() {
+            private final String currentPlaceholder = newPlaceholder;
+
+            @Override
+            public void focusGained(FocusEvent e) {
+                JTextField source = (JTextField) e.getSource();
+                if (source.getText().equals(currentPlaceholder)) {
+                    source.setText("");
+                    source.setForeground(COLOR_FOREGROUND);
+                }
+                source.getCaret().setVisible(true);
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                JTextField source = (JTextField) e.getSource();
+                if (source.getText().isEmpty()) {
+                    source.setForeground(COLOR_PLACEHOLDER);
+                    source.setText(currentPlaceholder);
+                }
+                source.getCaret().setVisible(false);
             }
         });
     }

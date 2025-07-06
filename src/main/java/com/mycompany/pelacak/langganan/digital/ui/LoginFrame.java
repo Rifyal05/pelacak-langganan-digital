@@ -4,12 +4,17 @@
  */
 package com.mycompany.pelacak.langganan.digital.ui;
 
+import com.mycompany.pelacak.langganan.digital.theme.LoginTheme;
 import com.mycompany.pelacak.langganan.digital.db.UserDAO;
 import com.mycompany.pelacak.langganan.digital.model.Users;
 import com.mycompany.pelacak.langganan.digital.service.PasswordService;
 import java.awt.Cursor;
+import java.util.Locale;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 /**
  *
@@ -18,15 +23,22 @@ import javax.swing.SwingUtilities;
 @SuppressWarnings("serial")
 public class LoginFrame extends javax.swing.JFrame {
 
+    private String currentPasswordPlaceholder;
+
     /**
      * Creates new form LoginFrame2
      */
     public LoginFrame() {
         initComponents();
+        InputUsername.setName("UsernameField");
+        InputPassword.setName("PasswordField");
         applyCustomThemeColors();
         setupLinkActions();
-        this.setTitle("Login Form");
+        setupEnterKeyListener();
+//        this.setTitle("Login Form");
         this.setLocationRelativeTo(null);
+        setupLanguageComboBox();
+        updateTexts();
     }
 
     /**
@@ -59,7 +71,6 @@ public class LoginFrame extends javax.swing.JFrame {
         intlusername.setText("USERNAME");
 
         InputUsername.setFont(new java.awt.Font("Malgun Gothic", 0, 14)); // NOI18N
-        InputUsername.setText("Masukan Username");
         InputUsername.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 InputUsernameActionPerformed(evt);
@@ -159,15 +170,20 @@ public class LoginFrame extends javax.swing.JFrame {
         String password = new String(InputPassword.getPassword());
 
         // 2. VALIDASI INPUT
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Username dan Password tidak boleh kosong!", "Error", JOptionPane.ERROR_MESSAGE);
-            return; // Hentikan proses
+        if (username.isEmpty() || username.equals(LocalizationService.getString("login.placeholder.username")) || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    LocalizationService.getString("login.message.emptyFields"),
+                    LocalizationService.getString("dialog.title.error"),
+                    JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
         // BERI UMPAN BALIK KE PENGGUNA & NONAKTIFKAN TOMBOL
         // Beri tahu pengguna bahwa proses sedang berjalan
         ButtonLogin.setEnabled(false);
-        ButtonLogin.setText("Memverifikasi...");
+        // UBAH TEKS TOMBOL SAAT LOADING
+        ButtonLogin.setText(LocalizationService.getString("login.button.verifying"));
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         // Ubah cursor menjadi ikon 'tunggu'
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -184,8 +200,7 @@ public class LoginFrame extends javax.swing.JFrame {
                 if (userFromDb != null) {
                     String storedHash = userFromDb.getHashed_password();
                     String salt = userFromDb.getSalt();
-
-                    // Verifikasi password
+                    // verifikasi password
                     if (PasswordService.verifyPassword(password, storedHash, salt)) {
                         loginSuccess = true;
                     }
@@ -194,31 +209,41 @@ public class LoginFrame extends javax.swing.JFrame {
                 final boolean finalLoginSuccess = loginSuccess;
                 SwingUtilities.invokeLater(() -> {
                     if (finalLoginSuccess) {
-                        // Jika login berhasil
-                        JOptionPane.showMessageDialog(this, "Login Berhasil!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(this,
+                                LocalizationService.getString("login.message.loginSuccess"),
+                                LocalizationService.getString("dialog.title.success"),
+                                JOptionPane.INFORMATION_MESSAGE);
 
                         // Buka form utama aplikasi
                         UIFORM uiForm = new UIFORM();
-                        uiForm.setVisible(true);
+                        uiForm.setVisible(true); 
+                        uiForm.refreshSubscriptionTable();
 
                         // Tutup form login
                         this.dispose();
                     } else {
-                        // Jika login gagal
-                        JOptionPane.showMessageDialog(this, "Username atau Password salah.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
+                        // JIKA GAGAL
+                        JOptionPane.showMessageDialog(this,
+                                LocalizationService.getString("login.message.loginFailed"),
+                                LocalizationService.getString("login.message.loginFailed.title"),
+                                JOptionPane.ERROR_MESSAGE);
                     }
                 });
 
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, "Terjadi error sistem: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    String errorMessage = LocalizationService.getString("login.message.systemError", e.getMessage());
+                    JOptionPane.showMessageDialog(this,
+                            errorMessage,
+                            LocalizationService.getString("dialog.title.error"),
+                            JOptionPane.ERROR_MESSAGE);
                 });
             } finally {
-                // KEMBALIKAN UI KE KONDISI NORMAL
                 SwingUtilities.invokeLater(() -> {
                     ButtonLogin.setEnabled(true);
-                    ButtonLogin.setText("LOGIN");
+                    ButtonLogin.setText(LocalizationService.getString("login.button.login"));
                     setCursor(Cursor.getDefaultCursor());
+
                 });
             }
         }).start();
@@ -278,9 +303,7 @@ public class LoginFrame extends javax.swing.JFrame {
         LoginTheme.styleLabelColor(intlusername, LoginTheme.COLOR_FOREGROUND);
         LoginTheme.styleLabelColor(intlpassword, LoginTheme.COLOR_FOREGROUND);
         LoginTheme.styleTextFieldColor(InputUsername);
-        LoginTheme.addPlaceholderLogic(InputUsername, "Masukan Username");
         LoginTheme.styleTextFieldColor(InputPassword);
-        LoginTheme.addPlaceholderLogic(InputPassword, "Masukan Password");
         LoginTheme.styleButtonColor(ButtonLogin);
     }
 
@@ -289,9 +312,67 @@ public class LoginFrame extends javax.swing.JFrame {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 SwingUtilities.invokeLater(() -> {
-                    new RegisterDialog().setVisible(true);
+                    new RegisterDialog(LoginFrame.this, true).setVisible(true);
                 });
             }
         });
+    }
+
+    private void updateTexts() {
+        this.setTitle(LocalizationService.getString("login.frame.title"));
+        intltitle.setText(LocalizationService.getString("login.title"));
+        intlsubtitle.setText(LocalizationService.getString("login.subtitle"));
+        intlusername.setText(LocalizationService.getString("login.label.username"));
+        intlpassword.setText(LocalizationService.getString("login.label.password"));
+        ButtonLogin.setText(LocalizationService.getString("login.button.login"));
+        Register.setText(LocalizationService.getString("login.link.register"));
+
+        LoginTheme.updatePlaceholder(InputUsername, LocalizationService.getString("login.placeholder.username"));
+        LoginTheme.updatePlaceholder(InputPassword, LocalizationService.getString("login.placeholder.password"));
+    }
+
+    @SuppressWarnings("deprecation")
+    private void setupLanguageComboBox() {
+        jComboBox1.removeAllItems();
+        jComboBox1.addItem("Bahasa Indonesia");
+        jComboBox1.addItem("English");
+
+        // Atur pilihan default berdasarkan locale saat ini
+        if ("id".equals(LocalizationService.getCurrentLocale().getLanguage())) {
+            jComboBox1.setSelectedItem("Bahasa Indonesia");
+        } else {
+            jComboBox1.setSelectedItem("English");
+        }
+
+        // Tambahkan listener untuk mengubah bahasa saat dipilih
+        jComboBox1.addActionListener(e -> {
+            String selectedLanguage = (String) jComboBox1.getSelectedItem();
+            if ("Bahasa Indonesia".equals(selectedLanguage)) {
+                LocalizationService.setLocale(new Locale("id", "ID"));
+            } else {
+                LocalizationService.setLocale(new Locale("en", "US"));
+            }
+            updateTexts();
+        });
+    }
+
+    private void setupEnterKeyListener() {
+        InputPassword.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    ButtonLogin.doClick();
+                }
+            }
+        });
+
     }
 }

@@ -1,33 +1,21 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+// File: src/main/java/com/mycompany/pelacak/langganan/digital/util/CurrencyFormatter.java
+
 package com.mycompany.pelacak.langganan.digital.util;
 
-/**
- *
- * @author rifial
- */
 import java.text.NumberFormat;
 import java.util.Locale;
 
 public class CurrencyFormatter {
 
-    public static String toRupiah(double value) {
-        // Membuat Locale untuk Indonesia.
-        @SuppressWarnings("deprecation")
-        Locale indonesia = new Locale("id", "ID");
-        
-        // Mendapatkan instance NumberFormat yang dikonfigurasi untuk mata uang
-        // berdasarkan Locale yang diberikan.
+    public static String formatRupiah(double amount) {
+        Locale indonesia = new Locale("in", "ID");
         NumberFormat rupiahFormat = NumberFormat.getCurrencyInstance(indonesia);
-        
-        // Melakukan format dan mengembalikan hasilnya sebagai String.
-        return rupiahFormat.format(value);
+        return rupiahFormat.format(amount).replace("Rp", "Rp ");
     }
     
-    public static String toUSD(double value) {
-        NumberFormat usdFormat = NumberFormat.getCurrencyInstance(Locale.US);
-        return usdFormat.format(value);
+    public static String formatUSD(double amount) {
+        Locale us = new Locale("en", "US");
+        NumberFormat usdFormat = NumberFormat.getCurrencyInstance(us);
+        return usdFormat.format(amount);
     }
 }

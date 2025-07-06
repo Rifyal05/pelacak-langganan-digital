@@ -6,6 +6,8 @@ package com.mycompany.pelacak.langganan.digital.db;
 
 import com.mycompany.pelacak.langganan.digital.model.Subscription;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -28,56 +30,121 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
         sub.setCost(rs.getDouble("cost"));
         sub.setCurrency(rs.getString("currency"));
         sub.setBillingCycle(rs.getString("billing_cycle"));
-        sub.setNextDueDate(rs.getDate("next_due_date").toLocalDate());
+        java.sql.Date sqlDate = rs.getDate("next_due_date");
+        if (sqlDate != null) {
+            sub.setNextDueDate(sqlDate.toLocalDate());
+        } else {
+            sub.setNextDueDate(null);
+        }
         sub.setLogo(rs.getBytes("logo"));
         return sub;
     }
 
     // METODE SPESIFIK ADD DI SUBSCDAO
-    public void addSubscription(Subscription sub) {
-        String sql = "INSERT INTO subscriptions (service_name, cost, currency, billing_cycle, next_due_date, logo) VALUES (?, ?, ?, ?, ?, ?)";
+    public boolean addSubscription(Subscription sub) {
+        String sql = "INSERT INTO " + getTableName() + " (service_name, cost, currency, billing_cycle, next_due_date, logo) VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, sub.getServiceName());
-            stmt.setDouble(2, sub.getCost());
-            stmt.setString(3, sub.getCurrency());
-            stmt.setString(4, sub.getBillingCycle());
-            stmt.setDate(5, Date.valueOf(sub.getNextDueDate()));
-            stmt.setBytes(6, sub.getLogo());
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            stmt.executeUpdate();
+            pstmt.setString(1, sub.getServiceName());
+            pstmt.setDouble(2, sub.getCost());
+            pstmt.setString(3, sub.getCurrency());
+            pstmt.setString(4, sub.getBillingCycle());
+            if (sub.getNextDueDate() != null) {
+                pstmt.setDate(5, Date.valueOf(sub.getNextDueDate()));
+            } else {
+                pstmt.setNull(5, java.sql.Types.DATE);
+            }
+            pstmt.setBytes(6, sub.getLogo());
+
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
         } catch (SQLException e) {
+            return false;
         }
     }
 
     @Override
     public void update(Subscription sub) {
-        String sql = "UPDATE subscriptions SET service_name = ?, cost = ?, currency = ?, "
+        String sql = "UPDATE " + getTableName() + " SET service_name = ?, cost = ?, currency = ?, "
                 + "billing_cycle = ?, next_due_date = ?, logo = ? WHERE id = ?";
 
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            // Set parameter untuk kolom-kolom yang di-update
-            stmt.setString(1, sub.getServiceName());
-            stmt.setDouble(2, sub.getCost());
-            stmt.setString(3, sub.getCurrency());
-            stmt.setString(4, sub.getBillingCycle());
-            stmt.setDate(5, Date.valueOf(sub.getNextDueDate()));
-            stmt.setBytes(6, sub.getLogo());
-
-            // Set parameter untuk klausa WHERE
-            stmt.setInt(7, sub.getId());
-
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Langganan dengan ID " + sub.getId() + " berhasil diupdate.");
+            pstmt.setString(1, sub.getServiceName());
+            pstmt.setDouble(2, sub.getCost());
+            pstmt.setString(3, sub.getCurrency());
+            pstmt.setString(4, sub.getBillingCycle());
+            if (sub.getNextDueDate() != null) {
+                pstmt.setDate(5, Date.valueOf(sub.getNextDueDate()));
             } else {
-                System.out.println("Tidak ada langganan dengan ID " + sub.getId() + " yang ditemukan untuk diupdate.");
+                pstmt.setNull(5, java.sql.Types.DATE);
+            }
+            pstmt.setBytes(6, sub.getLogo());
+            pstmt.setInt(7, sub.getId());
+
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Subscription> getAllSubscriptions() {
+        List<Subscription> subscriptions = new ArrayList<>();
+        String sql = "SELECT * FROM " + getTableName();
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                subscriptions.add(mapResultSetToObject(rs));
             }
 
         } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return subscriptions;
+    }
 
+    public Subscription getSubscriptionById(int id) {
+        String sql = "SELECT * FROM " + getTableName() + " WHERE id = ?";
+        Subscription sub = null;
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    sub = mapResultSetToObject(rs);
+                }
+            }
+        } catch (SQLException e) {
+        }
+        return sub;
+    }
+
+    public boolean deleteSubscription(int id) {
+        String sql = "DELETE FROM " + getTableName() + " WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, id);
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+
+        } catch (SQLException e) {
+            return false;
         }
     }
+    
+    public void deleteAllSubscriptions() {
+    String sql = "DELETE FROM " + getTableName();
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        
+        pstmt.executeUpdate();
+        System.out.println("Semua data langganan di database berhasil dihapus.");
+        
+    } catch (SQLException e) {
+        System.err.println("Error menghapus semua data langganan: " + e.getMessage());
+        e.printStackTrace();
+    }
+}
 
 }

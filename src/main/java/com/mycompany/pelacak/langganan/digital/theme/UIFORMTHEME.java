@@ -2,12 +2,16 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.pelacak.langganan.digital.ui;
+package com.mycompany.pelacak.langganan.digital.theme;
 
-import static com.mycompany.pelacak.langganan.digital.ui.LoginTheme.COLOR_BORDER_TEXT_FIELD;
+import static com.mycompany.pelacak.langganan.digital.theme.LoginTheme.COLOR_BORDER_TEXT_FIELD;
+import static com.mycompany.pelacak.langganan.digital.theme.LoginTheme.COLOR_FOREGROUND;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -27,7 +31,7 @@ public class UIFORMTHEME {
 
     public static final Color COLOR_BACKGROUND = new Color(15, 15, 20);
     public static final Color COLOR_CARD = new Color(23, 23, 27);
-    public static final Color COLOR_BUTTON_PRIMARY_BG = new Color(0, 123, 255);
+    public static final Color COLOR_BUTTON_PRIMARY_BG = new Color(0,51,204);
     public static final Color COLOR_BUTTON_TEXT = Color.WHITE;
     public static final Color COLOR_PLACEHOLDER = new Color(160, 160, 160);
     public static final Color COLOR_TEXT_FIELD_BACKGROUND = new Color(40, 40, 45);
@@ -105,4 +109,38 @@ public class UIFORMTHEME {
             SwingUtilities.updateComponentTreeUI(scrollPane);
         }
     }
+    
+    
+    public static void updatePlaceholder(JTextField component, String newPlaceholder) {
+    for (FocusListener listener : component.getFocusListeners()) {
+        component.removeFocusListener(listener);
+    }
+    component.setText(newPlaceholder);
+    component.setForeground(COLOR_PLACEHOLDER);
+    
+    
+    component.addFocusListener(new FocusAdapter() {
+        private final String currentPlaceholder = newPlaceholder;
+
+        @Override
+        public void focusGained(FocusEvent e) {
+            JTextField source = (JTextField) e.getSource();
+            if (source.getText().equals(currentPlaceholder)) {
+                source.setText("");
+                source.setForeground(COLOR_FOREGROUND);
+            }
+            source.getCaret().setVisible(true);
+        }
+
+        @Override
+        public void focusLost(FocusEvent e) {
+            JTextField source = (JTextField) e.getSource();
+            if (source.getText().isEmpty()) {
+                source.setForeground(COLOR_PLACEHOLDER);
+                source.setText(currentPlaceholder);
+            }
+            source.getCaret().setVisible(false);
+        }
+    });
+}
 }
