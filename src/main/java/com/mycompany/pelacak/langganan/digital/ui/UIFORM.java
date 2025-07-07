@@ -28,6 +28,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.event.ListSelectionEvent;
+import java.time.LocalDate;
 
 /**
  *
@@ -102,7 +103,15 @@ public class UIFORM extends javax.swing.JFrame {
             new String [] {
                 "ID", "LAYANAN", "BIAYA", "SIKLUS", "TENGGAT"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tabellangganan);
 
         chartfield.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -388,27 +397,27 @@ public class UIFORM extends javax.swing.JFrame {
     private void logoutbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logoutbuttonActionPerformed
 
         int pilihan = JOptionPane.showConfirmDialog(
-            rootPane,
-            LocalizationService.getString("main.logout.confirm.message"),
-            LocalizationService.getString("main.logout.confirm.title"),
-            JOptionPane.YES_NO_OPTION
-    );
+                rootPane,
+                LocalizationService.getString("main.logout.confirm.message"),
+                LocalizationService.getString("main.logout.confirm.title"),
+                JOptionPane.YES_NO_OPTION
+        );
 
-    if (pilihan == JOptionPane.YES_OPTION) {
-        try {
-            // --- BERSIHKAN SESI PENGGUNA SAAT LOGOUT ---
-            SessionManager.clearCurrentUser(); // <-- PENTING
+        if (pilihan == JOptionPane.YES_OPTION) {
+            try {
+                // --- BERSIHKAN SESI PENGGUNA SAAT LOGOUT ---
+                SessionManager.clearCurrentUser(); // <-- PENTING
 
-            this.dispose();
-            LoginFrame loginFrame = new LoginFrame();
-            loginFrame.setVisible(true);
+                this.dispose();
+                LoginFrame loginFrame = new LoginFrame();
+                loginFrame.setVisible(true);
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, 
-                    LocalizationService.getString("login.message.systemError", e.getMessage()), 
-                    LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("login.message.systemError", e.getMessage()),
+                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+            }
         }
-    }
     }//GEN-LAST:event_logoutbuttonActionPerformed
 
     private void addbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addbuttonActionPerformed
@@ -644,7 +653,7 @@ public class UIFORM extends javax.swing.JFrame {
 
     public void refreshSubscriptionTable() {
         filterSubscriptionTable(searchfield.getText());
-        updateTotalCostDisplay(); 
+        updateTotalCostDisplay();
     }
 
     private void setupTableSelectionListener() {
@@ -788,7 +797,7 @@ public class UIFORM extends javax.swing.JFrame {
 //            }
 //        }
 //    }
-     private void filterSubscriptionTable(String searchText) {
+    private void filterSubscriptionTable(String searchText) {
         DefaultTableModel model = (DefaultTableModel) tabellangganan.getModel();
         model.setRowCount(0);
 
@@ -797,13 +806,13 @@ public class UIFORM extends javax.swing.JFrame {
 
         String placeholderText = LocalizationService.getString("main.search.placeholder").toLowerCase().trim();
         if (lowerCaseSearchText.equals(placeholderText)) {
-            lowerCaseSearchText = ""; 
+            lowerCaseSearchText = "";
         }
 
         Locale currentLocale = LocalizationService.getCurrentLocale();
         NumberFormat tableNumberFormatter = NumberFormat.getNumberInstance(currentLocale);
         tableNumberFormatter.setMinimumFractionDigits(2);
-        tableNumberFormatter.setMaximumFractionDigits(2); 
+        tableNumberFormatter.setMaximumFractionDigits(2);
 
         for (Subscription sub : allSubscriptions) {
             if (lowerCaseSearchText.isEmpty() || sub.getServiceName().toLowerCase().contains(lowerCaseSearchText)) {
@@ -815,7 +824,7 @@ public class UIFORM extends javax.swing.JFrame {
                 model.addRow(new Object[]{
                     sub.getId(),
                     sub.getServiceName(),
-                    tableNumberFormatter.format(sub.getCost()), 
+                    tableNumberFormatter.format(sub.getCost()),
                     displayedCycle,
                     sub.getNextDueDate()
                 });
@@ -841,4 +850,53 @@ public class UIFORM extends javax.swing.JFrame {
             }
         });
     }
+
+    private LocalDate calculateNewDueDate(LocalDate oldDueDate, String cycle) {
+        LocalDate newDueDate = oldDueDate; 
+        LocalDate today = LocalDate.now();
+
+        while (!newDueDate.isAfter(today)) {
+            newDueDate = switch (cycle) {
+                case "1 Bulan" ->
+                    newDueDate.plusMonths(1);
+                case "3 Bulan" ->
+                    newDueDate.plusMonths(3);
+                case "6 Bulan" ->
+                    newDueDate.plusMonths(6);
+                case "1 Tahun" ->
+                    newDueDate.plusYears(1);
+                default ->
+                    newDueDate.plusMonths(1); 
+            };
+        }
+
+        return newDueDate;
+    }
+
+     public void processAutomaticRenewals() {
+        List<Subscription> subscriptions = subscriptionDAO.getAllSubscriptions();
+        LocalDate today = LocalDate.now();
+        boolean changesMade = false;
+
+        for (Subscription sub : subscriptions) {
+            LocalDate dueDate = sub.getNextDueDate();
+
+            if (dueDate != null && dueDate.isBefore(today)) {
+                LocalDate newDueDate = calculateNewDueDate(dueDate, sub.getBillingCycle());
+                sub.setNextDueDate(newDueDate);
+                subscriptionDAO.update(sub);
+                changesMade = true;
+            }
+        }
+        
+        if (changesMade) {
+            JOptionPane.showMessageDialog(this, 
+                LocalizationService.getString("dialog.message.renewSuccess"), 
+                LocalizationService.getString("dialog.title.info"), 
+                JOptionPane.INFORMATION_MESSAGE);
+            
+            refreshSubscriptionTable(); 
+        }
+    }
+
 }
