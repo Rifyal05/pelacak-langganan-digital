@@ -24,6 +24,15 @@ public class Subscription implements Serializable {
     private String category;
     private String notes;
     private byte[] logo;
+    private int userId; 
+
+    public int getUserId() { 
+        return userId;
+    }
+
+    public void setUserId(int userId) { 
+        this.userId = userId;
+    }
 
     public Subscription() {
     }

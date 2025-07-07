@@ -13,6 +13,7 @@ import java.util.Locale;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
+import com.mycompany.pelacak.langganan.digital.service.SessionManager;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
@@ -23,7 +24,6 @@ import java.awt.event.KeyListener;
 @SuppressWarnings("serial")
 public class LoginFrame extends javax.swing.JFrame {
 
-    private String currentPasswordPlaceholder;
 
     /**
      * Creates new form LoginFrame2
@@ -190,55 +190,53 @@ public class LoginFrame extends javax.swing.JFrame {
 
         // JALANKAN PROSES VERIFIKASI DI BACKGROUND THREAD BARU
         new Thread(() -> {
-            try {
-                UserDAO userDAO = new UserDAO();
+        try {
+            UserDAO userDAO = new UserDAO();
+            Users userFromDb = userDAO.getUserByUsername(username.toLowerCase());
 
-                // Cari pengguna di database
-                Users userFromDb = userDAO.getUserByUsername(username.toLowerCase());
-
-                boolean loginSuccess = false;
-                if (userFromDb != null) {
-                    String storedHash = userFromDb.getHashed_password();
-                    String salt = userFromDb.getSalt();
-                    // verifikasi password
-                    if (PasswordService.verifyPassword(password, storedHash, salt)) {
-                        loginSuccess = true;
-                    }
+            boolean loginSuccess = false;
+            if (userFromDb != null) {
+                String storedHash = userFromDb.getHashed_password();
+                String salt = userFromDb.getSalt();
+                if (PasswordService.verifyPassword(password, storedHash, salt)) {
+                    loginSuccess = true;
+                   
+                    SessionManager.setCurrentUser(userFromDb); 
                 }
+            }
 
-                final boolean finalLoginSuccess = loginSuccess;
-                SwingUtilities.invokeLater(() -> {
-                    if (finalLoginSuccess) {
-                        JOptionPane.showMessageDialog(this,
-                                LocalizationService.getString("login.message.loginSuccess"),
-                                LocalizationService.getString("dialog.title.success"),
-                                JOptionPane.INFORMATION_MESSAGE);
+            final boolean finalLoginSuccess = loginSuccess;
+            SwingUtilities.invokeLater(() -> {
+                if (finalLoginSuccess) {
+                    JOptionPane.showMessageDialog(this, 
+                        LocalizationService.getString("login.message.loginSuccess"), 
+                        LocalizationService.getString("dialog.title.success"), 
+                        JOptionPane.INFORMATION_MESSAGE);
 
-                        // Buka form utama aplikasi
-                        UIFORM uiForm = new UIFORM();
-                        uiForm.setVisible(true); 
-                        uiForm.refreshSubscriptionTable();
+                    UIFORM uiForm = new UIFORM();
+                    uiForm.setVisible(true);
+                    uiForm.refreshSubscriptionTable();
+                    this.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, 
+                        LocalizationService.getString("login.message.loginFailed"), 
+                        LocalizationService.getString("login.message.loginFailed.title"), 
+                        JOptionPane.ERROR_MESSAGE);
 
-                        // Tutup form login
-                        this.dispose();
-                    } else {
-                        // JIKA GAGAL
-                        JOptionPane.showMessageDialog(this,
-                                LocalizationService.getString("login.message.loginFailed"),
-                                LocalizationService.getString("login.message.loginFailed.title"),
-                                JOptionPane.ERROR_MESSAGE);
-                    }
-                });
+                    SessionManager.clearCurrentUser(); 
+                }
+            });
 
-            } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> {
-                    String errorMessage = LocalizationService.getString("login.message.systemError", e.getMessage());
-                    JOptionPane.showMessageDialog(this,
-                            errorMessage,
-                            LocalizationService.getString("dialog.title.error"),
-                            JOptionPane.ERROR_MESSAGE);
-                });
-            } finally {
+        } catch (Exception e) {
+            SwingUtilities.invokeLater(() -> {
+                String errorMessage = LocalizationService.getString("login.message.systemError", e.getMessage());
+                JOptionPane.showMessageDialog(this, 
+                    errorMessage, 
+                    LocalizationService.getString("dialog.title.error"), 
+                    JOptionPane.ERROR_MESSAGE);
+                SessionManager.clearCurrentUser();
+            });
+        } finally {
                 SwingUtilities.invokeLater(() -> {
                     ButtonLogin.setEnabled(true);
                     ButtonLogin.setText(LocalizationService.getString("login.button.login"));

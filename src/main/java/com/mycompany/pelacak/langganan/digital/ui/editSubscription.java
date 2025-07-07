@@ -9,12 +9,16 @@ import com.mycompany.pelacak.langganan.digital.model.Subscription;
 import com.mycompany.pelacak.langganan.digital.theme.RegisterTheme;
 import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
 import java.awt.Font;
+import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
 /**
@@ -32,8 +36,8 @@ public class editSubscription extends javax.swing.JDialog {
     public editSubscription(java.awt.Frame parent, boolean modal, Subscription subscriptionToEdit) {
         super(parent, modal);
 
-        if (parent instanceof UIFORM) {
-            this.parentUIForm = (UIFORM) parent;
+        if (parent instanceof UIFORM uiform) {
+            this.parentUIForm = uiform;
         }
         this.currentSubscription = subscriptionToEdit;
 
@@ -107,7 +111,7 @@ public class editSubscription extends javax.swing.JDialog {
         SubTitle.setText("UBAH FORM BERIKUT UNTUK MENGEDIT DATA LANGGANAN ANDA");
 
         buttonaddimage.setBackground(new java.awt.Color(51, 51, 51));
-        buttonaddimage.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
+        buttonaddimage.setFont(new java.awt.Font("Malgun Gothic", 0, 12)); // NOI18N
         buttonaddimage.setForeground(new java.awt.Color(255, 255, 255));
         buttonaddimage.setText("EDIT LOGO");
         buttonaddimage.addActionListener(new java.awt.event.ActionListener() {
@@ -201,7 +205,7 @@ public class editSubscription extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(buttonaddimage, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(inputnamalayanan1, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 58, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 59, Short.MAX_VALUE)
                 .addComponent(buttonadddata, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(84, 84, 84))
         );
@@ -270,7 +274,7 @@ public class editSubscription extends javax.swing.JDialog {
                 parentUIForm.refreshSubscriptionTable();
             }
             this.dispose();
-        } catch (Exception e) {
+        } catch (HeadlessException e) {
             JOptionPane.showMessageDialog(this,
                     LocalizationService.getString("dialog.message.editFailed", e.getMessage()),
                     LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
@@ -282,9 +286,27 @@ public class editSubscription extends javax.swing.JDialog {
     }//GEN-LAST:event_inputnamalayananActionPerformed
 
     private void buttonaddimageActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonaddimageActionPerformed
-        ImageIcon imageIcon = new ImageIcon(selectedLogoBytes);
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle(LocalizationService.getString("dialog.title.selectLogo"));
+        int userSelection = fileChooser.showOpenDialog(this);
 
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
+                selectedLogoBytes = Files.readAllBytes(selectedFile.toPath());
+                inputnamalayanan1.setText(selectedFile.getAbsolutePath());
 
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                        LocalizationService.getString("dialog.message.imageLoadFailed", ex.getMessage()),
+                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
+                selectedLogoBytes = null;
+                inputnamalayanan1.setText(LocalizationService.getString("add.placeholder.imagePathFailed"));
+            }
+        } else {
+            inputnamalayanan1.setText(LocalizationService.getString("add.placeholder.noFileSelected"));
+            selectedLogoBytes = null;
+        }
     }//GEN-LAST:event_buttonaddimageActionPerformed
 
     private void inputbiayalayananActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputbiayalayananActionPerformed
@@ -328,7 +350,12 @@ public class editSubscription extends javax.swing.JDialog {
         }
 
         selectedLogoBytes = sub.getLogo();
-        
+        if (selectedLogoBytes != null && selectedLogoBytes.length > 0) {
+            inputnamalayanan1.setText(LocalizationService.getString("edit.placeholder.imageSelected"));
+        } else {
+            inputnamalayanan1.setText(LocalizationService.getString("add.placeholder.imagePath")); 
+        }
+
     }
 
 
@@ -416,7 +443,8 @@ public class editSubscription extends javax.swing.JDialog {
         // 3. Atur Placeholder untuk Input Fields
         RegisterTheme.updatePlaceholder(inputnamalayanan, LocalizationService.getString("add.placeholder.serviceName"));
         RegisterTheme.updatePlaceholder(inputbiayalayanan, LocalizationService.getString("add.placeholder.serviceCost"));
-
+        RegisterTheme.updatePlaceholder(inputnamalayanan1, LocalizationService.getString("add.placeholder.imagePath"));
+        
         // 4. Perbarui Item ComboBox Siklus
         String selectedItemBeforeUpdate = (String) sikluscombobox.getSelectedItem();
 

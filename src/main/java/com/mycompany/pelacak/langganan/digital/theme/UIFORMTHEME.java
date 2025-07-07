@@ -38,7 +38,7 @@ public class UIFORMTHEME {
     public static final Color COLOR_TABLE_BACKGROUND = new Color(35, 35, 40);
     public static final Color COLOR_TABLE_FOREGROUND = new Color(210, 210, 210);
     public static final Color COLOR_TABLE_GRID = new Color(70, 70, 75);
-    public static final Color COLOR_TABLE_SELECTION_BG = new Color(0, 123, 255);
+    public static final Color COLOR_TABLE_SELECTION_BG = new Color(0, 100, 205);
     public static final Color COLOR_TABLE_SELECTION_FG = Color.WHITE;
     public static final Color COLOR_TABLE_HEADER_BG = new Color(60, 60, 65);
     public static final Color COLOR_TABLE_HEADER_FG = new Color(220, 220, 220);

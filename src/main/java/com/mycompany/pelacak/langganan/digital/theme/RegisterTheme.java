@@ -26,7 +26,7 @@ public class RegisterTheme {
     public static final Color COLOR_FOREGROUND = Color.WHITE;
     public static final Color COLOR_LABEL_FOREGROUND = Color.WHITE;
     public static final Color COLOR_PLACEHOLDER = new Color(140, 140, 140);
-    public static final Color COLOR_BUTTON_PRIMARY_BG = new Color(0, 123, 255);
+    public static final Color COLOR_BUTTON_PRIMARY_BG = new Color(0,51,204);
     public static final Color COLOR_BUTTON_TEXT = Color.WHITE;
     public static final Color COLOR_BORDER_TEXT_FIELD = new Color(70, 70, 75);
     public static final Color COLOR_LINK = new Color(100, 150, 255);

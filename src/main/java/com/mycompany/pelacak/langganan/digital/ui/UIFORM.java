@@ -8,18 +8,24 @@ import com.mycompany.pelacak.langganan.digital.theme.UIFORMTHEME;
 import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
 import com.mycompany.pelacak.langganan.digital.db.SubscriptionDAO;
 import com.mycompany.pelacak.langganan.digital.model.Subscription;
+import com.mycompany.pelacak.langganan.digital.service.SessionManager;
 import com.mycompany.pelacak.langganan.digital.util.CurrencyFormatter;
 import com.mycompany.pelacak.langganan.digital.util.SerializationUtil;
 import java.awt.BorderLayout;
 import java.awt.HeadlessException;
+import java.awt.event.ActionListener;
 import java.io.File;
+import java.text.NumberFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.event.ListSelectionEvent;
 
@@ -33,6 +39,7 @@ public class UIFORM extends javax.swing.JFrame {
     private final SubscriptionDAO subscriptionDAO;
     private Subscription selectedSubscription;
     private Map<String, Double> periodDisplayToMultiplierMap;
+    private Map<String, String> cycleInternalToDisplayMap;
 
     /**
      * Creates new form UIFORM
@@ -46,7 +53,8 @@ public class UIFORM extends javax.swing.JFrame {
         imagefield.setLayout(new BorderLayout());
 
         setupTableSelectionListener();
-
+        setupComboBoxTotalCost();
+        setupSearchFieldListener();
     }
 
     /**
@@ -380,24 +388,27 @@ public class UIFORM extends javax.swing.JFrame {
     private void logoutbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logoutbuttonActionPerformed
 
         int pilihan = JOptionPane.showConfirmDialog(
-                rootPane,
-                LocalizationService.getString("main.logout.confirm.message"),
-                LocalizationService.getString("main.logout.confirm.title"),
-                JOptionPane.YES_NO_OPTION
-        );
+            rootPane,
+            LocalizationService.getString("main.logout.confirm.message"),
+            LocalizationService.getString("main.logout.confirm.title"),
+            JOptionPane.YES_NO_OPTION
+    );
 
-        if (pilihan == JOptionPane.YES_OPTION) {
-            try {
-                this.dispose();
-                LoginFrame loginFrame = new LoginFrame();
-                loginFrame.setVisible(true);
+    if (pilihan == JOptionPane.YES_OPTION) {
+        try {
+            // --- BERSIHKAN SESI PENGGUNA SAAT LOGOUT ---
+            SessionManager.clearCurrentUser(); // <-- PENTING
 
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this,
-                        LocalizationService.getString("login.message.systemError", e.getMessage()),
-                        LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
-            }
+            this.dispose();
+            LoginFrame loginFrame = new LoginFrame();
+            loginFrame.setVisible(true);
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                    LocalizationService.getString("login.message.systemError", e.getMessage()), 
+                    LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
         }
+    }
     }//GEN-LAST:event_logoutbuttonActionPerformed
 
     private void addbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addbuttonActionPerformed
@@ -585,11 +596,10 @@ public class UIFORM extends javax.swing.JFrame {
         UIFORMTHEME.styleButton(savebutton);
         UIFORMTHEME.stylePanelCard(panelinfo);
         UIFORMTHEME.stylePanelCard(chartfield);
-//        UIFORMTHEME.styleSearchField(searchfield);
+        UIFORMTHEME.styleSearchField(searchfield);
         UIFORMTHEME.styleTable(tabellangganan, jScrollPane1);
     }
 
-    // DI UIFORM.java, dalam method updateTexts()
     private void updateTexts() {
         this.setTitle(LocalizationService.getString("main.frame.title"));
 
@@ -599,7 +609,6 @@ public class UIFORM extends javax.swing.JFrame {
         intllabeltenggat.setText(LocalizationService.getString("main.info.due"));
 
         intllabelbiayatotal.setText(LocalizationService.getString("main.info.totalCostLabel"));
-        // labelbiayalangganantotal.setText(LocalizationService.getString("main.info.totalCostValue")); // <-- HAPUS INI
 
         addbutton.setText(LocalizationService.getString("main.button.add"));
         editbutton.setText(LocalizationService.getString("main.button.edit"));
@@ -620,36 +629,22 @@ public class UIFORM extends javax.swing.JFrame {
         };
         model.setColumnIdentifiers(newHeaders);
 
-        // --- PENTING: Perbarui dan set pilihan ComboBox total biaya ---
         String selectedItemBeforeUpdate = (String) comboboxbiayalangganantotal.getSelectedItem();
-        setupComboBoxTotalCost(); // Ini akan mengisi ulang item-item combobox
+
+        setupComboBoxTotalCost();
+
         if (selectedItemBeforeUpdate != null && periodDisplayToMultiplierMap.containsKey(selectedItemBeforeUpdate)) {
             comboboxbiayalangganantotal.setSelectedItem(selectedItemBeforeUpdate);
         } else {
-            comboboxbiayalangganantotal.setSelectedItem(LocalizationService.getString("totalCost.period.monthly"));
+            comboboxbiayalangganantotal.setSelectedItem(LocalizationService.getString("totalCost.period.currentMonth"));
         }
 
-        // Panggil update display total setelah semua teks dilokalisasi dan combobox diatur
         updateTotalCostDisplay();
     }
 
     public void refreshSubscriptionTable() {
-        DefaultTableModel model = (DefaultTableModel) tabellangganan.getModel();
-        model.setRowCount(0);
-
-        List<Subscription> subscriptions = subscriptionDAO.getAllSubscriptions();
-        for (Subscription sub : subscriptions) {
-            model.addRow(new Object[]{
-                sub.getId(),
-                sub.getServiceName(),
-                sub.getCost(),
-                sub.getBillingCycle(),
-                sub.getNextDueDate()
-            });
-        }
-
-        // === PANGGIL METODE PEMBARUAN TOTAL BIAYA DI SINI ===
-        updateTotalCostDisplay();
+        filterSubscriptionTable(searchfield.getText());
+        updateTotalCostDisplay(); 
     }
 
     private void setupTableSelectionListener() {
@@ -661,18 +656,23 @@ public class UIFORM extends javax.swing.JFrame {
 
                 if (selectedSubscription != null) {
                     subscriptionname.setText(selectedSubscription.getServiceName());
-                    billamount.setText(String.valueOf(selectedSubscription.getCost()));
-                    subscriptioncycle.setText(selectedSubscription.getBillingCycle());
+                    billamount.setText(CurrencyFormatter.formatRupiah(selectedSubscription.getCost()));
+
+                    String displayedCycle = selectedSubscription.getBillingCycle();
+                    if (cycleInternalToDisplayMap != null && cycleInternalToDisplayMap.containsKey(selectedSubscription.getBillingCycle())) {
+                        displayedCycle = cycleInternalToDisplayMap.get(selectedSubscription.getBillingCycle());
+                    }
+                    subscriptioncycle.setText(displayedCycle);
+
                     paymentdeadline.setText(selectedSubscription.getNextDueDate() != null ? selectedSubscription.getNextDueDate().toString() : "");
 
                     byte[] logoBytes = selectedSubscription.getLogo();
                     if (logoBytes != null && logoBytes.length > 0) {
                         ImageIcon imageIcon = new ImageIcon(logoBytes);
                         java.awt.Image image = imageIcon.getImage().getScaledInstance(
-                                imagefield.getPreferredSize().width,
-                                imagefield.getPreferredSize().height,
+                                imagefield.getWidth(),
+                                imagefield.getHeight(),
                                 java.awt.Image.SCALE_SMOOTH);
-
                         imagefield.removeAll();
                         imagefield.add(new javax.swing.JLabel(new ImageIcon(image)), BorderLayout.CENTER);
                         imagefield.revalidate();
@@ -690,7 +690,6 @@ public class UIFORM extends javax.swing.JFrame {
                     imagefield.removeAll();
                     imagefield.revalidate();
                     imagefield.repaint();
-
                     selectedSubscription = null;
                 }
             }
@@ -698,67 +697,148 @@ public class UIFORM extends javax.swing.JFrame {
     }
 
     private double calculateTotalMonthlyRate() {
-        double totalMonthlyRate = 0.0;
+        double totalThisMonth = 0.0;
         List<Subscription> subscriptions = subscriptionDAO.getAllSubscriptions();
 
         for (Subscription sub : subscriptions) {
-            double cost = sub.getCost();
-            String billingCycle = sub.getBillingCycle();
-
-            switch (billingCycle) {
-                case "1 Bulan" ->
-                    totalMonthlyRate += cost;
-                case "3 Bulan" ->
-                    totalMonthlyRate += (cost / 3.0);
-                case "6 Bulan" ->
-                    totalMonthlyRate += (cost / 6.0);
-                case "1 Tahun" ->
-                    totalMonthlyRate += (cost / 12.0);
-                default -> {
-                    totalMonthlyRate += cost; // Asumsi bulanan jika tidak cocok
-                    System.err.println("Siklus pembayaran tidak dikenal atau manual: " + billingCycle + ". Biaya ditambahkan sebagai bulanan.");
-                }
+            if ("1 Bulan".equals(sub.getBillingCycle())) {
+                totalThisMonth += sub.getCost();
             }
         }
-        return totalMonthlyRate;
+        return totalThisMonth;
     }
 
-// --- METHOD BARU: Memperbarui tampilan total biaya berdasarkan pilihan ComboBox ---
-    private void updateTotalCostDisplay() {
-        double monthlyRate = calculateTotalMonthlyRate(); // Dapatkan tarif bulanan dasar
-        String selectedPeriodDisplay = (String) comboboxbiayalangganantotal.getSelectedItem();
-        Double multiplier = periodDisplayToMultiplierMap.get(selectedPeriodDisplay);
+    private double calculateTotalOverallCost() {
+        double total = 0.0;
+        List<Subscription> subscriptions = subscriptionDAO.getAllSubscriptions();
+        for (Subscription sub : subscriptions) {
+            total += sub.getCost();
+        }
+        return total;
+    }
 
-        if (multiplier == null) {
-            multiplier = 1.0; // Default ke 1x (bulanan) jika pilihan tidak valid
+    private void updateTotalCostDisplay() {
+        String selectedPeriodDisplay = (String) comboboxbiayalangganantotal.getSelectedItem();
+        double calculatedCost = 0.0;
+
+        if (selectedPeriodDisplay == null) {
+            labelbiayalangganantotal.setText(CurrencyFormatter.formatRupiah(0.0));
+            return;
         }
 
-        double totalCost = monthlyRate * multiplier;
-        labelbiayalangganantotal.setText(CurrencyFormatter.formatRupiah(totalCost));
+        if (selectedPeriodDisplay.equals(LocalizationService.getString("totalCost.period.currentMonth"))) {
+            calculatedCost = calculateTotalMonthlyRate();
+        } else if (selectedPeriodDisplay.equals(LocalizationService.getString("totalCost.period.overall"))) {
+            calculatedCost = calculateTotalOverallCost();
+        } else {
+            calculatedCost = 0.0;
+        }
+        labelbiayalangganantotal.setText(CurrencyFormatter.formatRupiah(calculatedCost));
     }
 
-// --- METHOD BARU: Menyiapkan ComboBox total biaya ---
     private void setupComboBoxTotalCost() {
+        for (ActionListener al : comboboxbiayalangganantotal.getActionListeners()) {
+            comboboxbiayalangganantotal.removeActionListener(al);
+        }
+
         comboboxbiayalangganantotal.removeAllItems();
         periodDisplayToMultiplierMap = new LinkedHashMap<>();
 
-        // Isi map dengan nilai yang dilokalisasi dan multiplier-nya
-        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.monthly"), 1.0);
-        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.quarterly"), 3.0);
-        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.halfYearly"), 6.0);
-        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.yearly"), 12.0);
+        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.currentMonth"), 1.0);
+        periodDisplayToMultiplierMap.put(LocalizationService.getString("totalCost.period.overall"), 0.0);
 
-        // Tambahkan item ke ComboBox
         for (String displayValue : periodDisplayToMultiplierMap.keySet()) {
             comboboxbiayalangganantotal.addItem(displayValue);
         }
 
-        // Set listener untuk ComboBox. Panggil updateTotalCostDisplay() saat pilihan berubah.
-        // Hapus listener lama untuk menghindari duplikasi
-        for (java.awt.event.ActionListener al : comboboxbiayalangganantotal.getActionListeners()) {
-            comboboxbiayalangganantotal.removeActionListener(al);
-        }
         comboboxbiayalangganantotal.addActionListener(e -> updateTotalCostDisplay());
+
+        if (comboboxbiayalangganantotal.getItemCount() > 0) {
+            comboboxbiayalangganantotal.setSelectedItem(LocalizationService.getString("totalCost.period.currentMonth"));
+        }
     }
 
+//    private void filterSubscriptionTable(String searchText) {
+//        DefaultTableModel model = (DefaultTableModel) tabellangganan.getModel();
+//        model.setRowCount(0);
+//
+//        List<Subscription> allSubscriptions = subscriptionDAO.getAllSubscriptions();
+//        String lowerCaseSearchText = searchText.toLowerCase().trim();
+//
+//        
+//        String placeholderText = LocalizationService.getString("main.search.placeholder").toLowerCase().trim();
+//        if (lowerCaseSearchText.equals(placeholderText)) {
+//            lowerCaseSearchText = ""; 
+//        }
+//
+//        for (Subscription sub : allSubscriptions) {
+//            if (lowerCaseSearchText.isEmpty() || sub.getServiceName().toLowerCase().contains(lowerCaseSearchText)) {
+//                String displayedCycle = sub.getBillingCycle();
+//                if (cycleInternalToDisplayMap != null && cycleInternalToDisplayMap.containsKey(sub.getBillingCycle())) {
+//                    displayedCycle = cycleInternalToDisplayMap.get(sub.getBillingCycle());
+//                }
+//
+//                model.addRow(new Object[]{
+//                    sub.getId(),
+//                    sub.getServiceName(),
+//                    sub.getCost(),
+//                    displayedCycle,
+//                    sub.getNextDueDate()
+//                });
+//            }
+//        }
+//    }
+     private void filterSubscriptionTable(String searchText) {
+        DefaultTableModel model = (DefaultTableModel) tabellangganan.getModel();
+        model.setRowCount(0);
+
+        List<Subscription> allSubscriptions = subscriptionDAO.getAllSubscriptions();
+        String lowerCaseSearchText = searchText.toLowerCase().trim();
+
+        String placeholderText = LocalizationService.getString("main.search.placeholder").toLowerCase().trim();
+        if (lowerCaseSearchText.equals(placeholderText)) {
+            lowerCaseSearchText = ""; 
+        }
+
+        Locale currentLocale = LocalizationService.getCurrentLocale();
+        NumberFormat tableNumberFormatter = NumberFormat.getNumberInstance(currentLocale);
+        tableNumberFormatter.setMinimumFractionDigits(2);
+        tableNumberFormatter.setMaximumFractionDigits(2); 
+
+        for (Subscription sub : allSubscriptions) {
+            if (lowerCaseSearchText.isEmpty() || sub.getServiceName().toLowerCase().contains(lowerCaseSearchText)) {
+                String displayedCycle = sub.getBillingCycle();
+                if (cycleInternalToDisplayMap != null && cycleInternalToDisplayMap.containsKey(sub.getBillingCycle())) {
+                    displayedCycle = cycleInternalToDisplayMap.get(sub.getBillingCycle());
+                }
+
+                model.addRow(new Object[]{
+                    sub.getId(),
+                    sub.getServiceName(),
+                    tableNumberFormatter.format(sub.getCost()), 
+                    displayedCycle,
+                    sub.getNextDueDate()
+                });
+            }
+        }
+    }
+
+    private void setupSearchFieldListener() {
+        searchfield.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                filterSubscriptionTable(searchfield.getText());
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                filterSubscriptionTable(searchfield.getText());
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                filterSubscriptionTable(searchfield.getText());
+            }
+        });
+    }
 }

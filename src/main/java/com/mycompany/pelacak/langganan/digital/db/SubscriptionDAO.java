@@ -5,6 +5,7 @@
 package com.mycompany.pelacak.langganan.digital.db;
 
 import com.mycompany.pelacak.langganan.digital.model.Subscription;
+import com.mycompany.pelacak.langganan.digital.service.SessionManager;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,7 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
         sub.setCost(rs.getDouble("cost"));
         sub.setCurrency(rs.getString("currency"));
         sub.setBillingCycle(rs.getString("billing_cycle"));
+
         java.sql.Date sqlDate = rs.getDate("next_due_date");
         if (sqlDate != null) {
             sub.setNextDueDate(sqlDate.toLocalDate());
@@ -37,13 +39,12 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
             sub.setNextDueDate(null);
         }
         sub.setLogo(rs.getBytes("logo"));
+        sub.setUserId(rs.getInt("user_id"));
         return sub;
     }
 
-    // METODE SPESIFIK ADD DI SUBSCDAO
     public boolean addSubscription(Subscription sub) {
-        String sql = "INSERT INTO " + getTableName() + " (service_name, cost, currency, billing_cycle, next_due_date, logo) VALUES (?, ?, ?, ?, ?, ?)";
-
+        String sql = "INSERT INTO " + getTableName() + " (service_name, cost, currency, billing_cycle, next_due_date, logo, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)"; // <-- BARU: Tambahkan user_id di query
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, sub.getServiceName());
@@ -56,6 +57,7 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
                 pstmt.setNull(5, java.sql.Types.DATE);
             }
             pstmt.setBytes(6, sub.getLogo());
+            pstmt.setInt(7, sub.getUserId());
 
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
@@ -67,7 +69,7 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
     @Override
     public void update(Subscription sub) {
         String sql = "UPDATE " + getTableName() + " SET service_name = ?, cost = ?, currency = ?, "
-                + "billing_cycle = ?, next_due_date = ?, logo = ? WHERE id = ?";
+                + "billing_cycle = ?, next_due_date = ?, logo = ? WHERE id = ? AND user_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -82,34 +84,38 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
             }
             pstmt.setBytes(6, sub.getLogo());
             pstmt.setInt(7, sub.getId());
+            pstmt.setInt(8, SessionManager.getCurrentUserId());
 
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
     public List<Subscription> getAllSubscriptions() {
         List<Subscription> subscriptions = new ArrayList<>();
-        String sql = "SELECT * FROM " + getTableName();
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); ResultSet rs = pstmt.executeQuery()) {
+        String sql = "SELECT * FROM " + getTableName() + " WHERE user_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                subscriptions.add(mapResultSetToObject(rs));
+            pstmt.setInt(1, SessionManager.getCurrentUserId());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    subscriptions.add(mapResultSetToObject(rs));
+                }
             }
-
         } catch (SQLException e) {
-            e.printStackTrace();
         }
         return subscriptions;
     }
 
     public Subscription getSubscriptionById(int id) {
-        String sql = "SELECT * FROM " + getTableName() + " WHERE id = ?";
+        String sql = "SELECT * FROM " + getTableName() + " WHERE id = ? AND user_id = ?";
         Subscription sub = null;
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setInt(1, id);
+            pstmt.setInt(2, SessionManager.getCurrentUserId());
+
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     sub = mapResultSetToObject(rs);
@@ -121,10 +127,12 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
     }
 
     public boolean deleteSubscription(int id) {
-        String sql = "DELETE FROM " + getTableName() + " WHERE id = ?";
+        String sql = "DELETE FROM " + getTableName() + " WHERE id = ? AND user_id = ?";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setInt(1, id);
+            pstmt.setInt(2, SessionManager.getCurrentUserId());
+
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
 
@@ -132,19 +140,18 @@ public class SubscriptionDAO extends GenericDAO<Subscription> {
             return false;
         }
     }
-    
-    public void deleteAllSubscriptions() {
-    String sql = "DELETE FROM " + getTableName();
-    try (Connection conn = DatabaseConnection.getConnection();
-         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        
-        pstmt.executeUpdate();
-        System.out.println("Semua data langganan di database berhasil dihapus.");
-        
-    } catch (SQLException e) {
-        System.err.println("Error menghapus semua data langganan: " + e.getMessage());
-        e.printStackTrace();
+
+    public boolean deleteAllSubscriptions() {
+        String sql = "DELETE FROM " + getTableName() + " WHERE user_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, SessionManager.getCurrentUserId());
+
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            return false;
+        }
     }
-}
 
 }

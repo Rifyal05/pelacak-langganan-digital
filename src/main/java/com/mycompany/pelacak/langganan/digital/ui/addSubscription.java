@@ -8,6 +8,7 @@ import com.mycompany.pelacak.langganan.digital.theme.RegisterTheme;
 import com.mycompany.pelacak.langganan.digital.service.LocalizationService;
 import com.mycompany.pelacak.langganan.digital.db.SubscriptionDAO;
 import com.mycompany.pelacak.langganan.digital.model.Subscription;
+import com.mycompany.pelacak.langganan.digital.service.SessionManager;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.time.LocalDate;
@@ -31,7 +32,6 @@ public class addSubscription extends javax.swing.JDialog {
 
     private Map<String, String> cycleDisplayToInternalMap;
     private byte[] selectedLogoBytes;
-    private Subscription currentSubscription;
 
     public addSubscription(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
@@ -40,7 +40,7 @@ public class addSubscription extends javax.swing.JDialog {
             this.parentUIForm = (UIFORM) parent;
         }
 
-        initComponents(); 
+        initComponents();
         applyCustomThemeColors();
 
         pembayaranselanjutnya.setDate(new java.util.Date());
@@ -78,7 +78,7 @@ public class addSubscription extends javax.swing.JDialog {
         pembayaranberikutnyalabel = new javax.swing.JLabel();
         pembayaranselanjutnya = new com.toedter.calendar.JDateChooser();
         sikluscombobox = new javax.swing.JComboBox<>();
-        inputnamalayanan1 = new javax.swing.JTextField();
+        pathlogo = new javax.swing.JTextField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setBackground(new java.awt.Color(0, 0, 0));
@@ -112,7 +112,7 @@ public class addSubscription extends javax.swing.JDialog {
         SubTitle.setText("ISI FORM BERIKUT UNTUK MENAMBAHKAN DATA LANGGANAN BARU");
 
         buttonaddimage.setBackground(new java.awt.Color(51, 51, 51));
-        buttonaddimage.setFont(new java.awt.Font("Malgun Gothic", 0, 16)); // NOI18N
+        buttonaddimage.setFont(new java.awt.Font("Malgun Gothic", 0, 12)); // NOI18N
         buttonaddimage.setForeground(new java.awt.Color(255, 255, 255));
         buttonaddimage.setText("TAMBAH LOGO");
         buttonaddimage.addActionListener(new java.awt.event.ActionListener() {
@@ -142,10 +142,10 @@ public class addSubscription extends javax.swing.JDialog {
         sikluscombobox.setFont(new java.awt.Font("Segoe UI", 0, 16)); // NOI18N
         sikluscombobox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
-        inputnamalayanan1.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        inputnamalayanan1.addActionListener(new java.awt.event.ActionListener() {
+        pathlogo.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        pathlogo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                inputnamalayanan1ActionPerformed(evt);
+                pathlogoActionPerformed(evt);
             }
         });
 
@@ -157,7 +157,7 @@ public class addSubscription extends javax.swing.JDialog {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(inputnamalayanan1, javax.swing.GroupLayout.PREFERRED_SIZE, 228, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(pathlogo, javax.swing.GroupLayout.PREFERRED_SIZE, 228, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(buttonaddimage, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE))
                     .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -207,10 +207,10 @@ public class addSubscription extends javax.swing.JDialog {
                 .addGap(30, 30, 30)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(buttonaddimage, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(inputnamalayanan1, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(pathlogo, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(61, 61, 61)
                 .addComponent(buttonadddata, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(81, Short.MAX_VALUE))
+                .addContainerGap(82, Short.MAX_VALUE))
         );
 
         pack();
@@ -261,6 +261,7 @@ public class addSubscription extends javax.swing.JDialog {
         newSub.setBillingCycle(cycleInternal);
         newSub.setNextDueDate(nextPaymentLocalDate);
         newSub.setLogo(selectedLogoBytes);
+        newSub.setUserId(SessionManager.getCurrentUserId());
 
         SubscriptionDAO subDAO = new SubscriptionDAO();
         boolean success = subDAO.addSubscription(newSub);
@@ -295,13 +296,20 @@ public class addSubscription extends javax.swing.JDialog {
             File selectedFile = fileChooser.getSelectedFile();
             try {
                 selectedLogoBytes = Files.readAllBytes(selectedFile.toPath());
+                pathlogo.setText(selectedFile.getAbsolutePath());
 
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this,
                         LocalizationService.getString("dialog.message.imageLoadFailed", ex.getMessage()),
                         LocalizationService.getString("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
                 selectedLogoBytes = null;
+                pathlogo.setText(LocalizationService.getString("add.placeholder.imagePathFailed"));
             }
+        } else {
+            // Jika pengguna membatalkan pemilihan file, kosongkan path dan logo byte
+            pathlogo.setText(LocalizationService.getString("add.placeholder.noFileSelected"));
+            selectedLogoBytes = null;
+
         }
     }//GEN-LAST:event_buttonaddimageActionPerformed
 
@@ -309,9 +317,9 @@ public class addSubscription extends javax.swing.JDialog {
         // TODO add your handling code here:
     }//GEN-LAST:event_inputbiayalayananActionPerformed
 
-    private void inputnamalayanan1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputnamalayanan1ActionPerformed
+    private void pathlogoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pathlogoActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_inputnamalayanan1ActionPerformed
+    }//GEN-LAST:event_pathlogoActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -322,8 +330,8 @@ public class addSubscription extends javax.swing.JDialog {
     private javax.swing.JButton buttonaddimage;
     private javax.swing.JTextField inputbiayalayanan;
     private javax.swing.JTextField inputnamalayanan;
-    private javax.swing.JTextField inputnamalayanan1;
     private javax.swing.JLabel namalayanan;
+    private javax.swing.JTextField pathlogo;
     private javax.swing.JLabel pembayaranberikutnyalabel;
     private com.toedter.calendar.JDateChooser pembayaranselanjutnya;
     private javax.swing.JComboBox<String> sikluscombobox;
@@ -340,6 +348,8 @@ public class addSubscription extends javax.swing.JDialog {
         RegisterTheme.styleComboBox(sikluscombobox);
         RegisterTheme.styleButton(buttonadddata);
         RegisterTheme.styleDateChooser(pembayaranselanjutnya);
+        RegisterTheme.styleTextField(pathlogo);
+        pathlogo.setEditable(false);
     }
 
     private void updateDueDate() {
@@ -396,6 +406,7 @@ public class addSubscription extends javax.swing.JDialog {
         // 3. Atur Placeholder untuk Input Fields
         RegisterTheme.updatePlaceholder(inputnamalayanan, LocalizationService.getString("add.placeholder.serviceName"));
         RegisterTheme.updatePlaceholder(inputbiayalayanan, LocalizationService.getString("add.placeholder.serviceCost"));
+        RegisterTheme.updatePlaceholder(pathlogo, LocalizationService.getString("add.placeholder.imagePath"));
 
         // 4. Perbarui Item ComboBox Siklus
         String selectedItemBeforeUpdate = (String) sikluscombobox.getSelectedItem(); // Simpan pilihan sebelumnya
